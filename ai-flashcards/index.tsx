@@ -7,7 +7,7 @@ import {
 
 import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, seedVersion, stats, type Card, type Deck, type Stats } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
-import { ArticleView, hasArticle, warmArticles } from "./article"
+import { ArticleView, hasArticle, listArticles, warmArticles } from "./article"
 import { DiagView } from "./diag"
 
 const SESSION_LIMIT = 40
@@ -392,11 +392,6 @@ function CardDetail({ card }: { card: Card }) {
             ? "还没复习过"
             : `已复习 ${card.reps} 次 · 间隔 ${card.interval} 天 · 难度系数 ${card.ease.toFixed(2)}`}
         </Text>
-        {hasArticle(card.deck, card.qno) ? (
-          <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
-            <Label title="阅读这道题的原文" systemImage="doc.text" />
-          </NavigationLink>
-        ) : null}
       </VStack>
     </ScrollView>
   )
@@ -420,6 +415,11 @@ function DeckDetail({ deck }: { deck: Deck }) {
     <List navigationTitle={deck.name} navigationBarTitleDisplayMode="inline">
       {groups.map(([qno, group]) => (
         <Section header={<Text>第 {qno} 题 · {group.length} 张</Text>}>
+          {hasArticle(deck.id, qno) ? (
+            <NavigationLink destination={<ArticleView deck={deck.id} qno={qno} />}>
+              <Label title="阅读原文" systemImage="doc.text" />
+            </NavigationLink>
+          ) : null}
           {group.map(card => (
             <NavigationLink destination={<CardDetail card={card} />}>
               <VStack alignment="leading" spacing={2}>
@@ -448,6 +448,39 @@ function BrowseTab() {
             <Label title={deck.name} systemImage={deck.icon} />
           </NavigationLink>
         ))}
+      </List>
+    </NavigationStack>
+  )
+}
+
+// ------------------------------------------------------------- 原文
+
+function ArticlesTab() {
+  const [decks, setDecks] = useState<Deck[]>([])
+  useEffect(() => { listDecks().then(setDecks) }, [])
+
+  return (
+    <NavigationStack>
+      <List navigationTitle="原文">
+        {decks.map(deck => {
+          const items = listArticles(deck.id)
+          if (items.length === 0) return null
+          return (
+            <Section header={<Text>{deck.name} · {items.length} 篇</Text>}>
+              {items.map(it => (
+                <NavigationLink destination={<ArticleView deck={deck.id} qno={it.qno} />}>
+                  <HStack spacing={10}>
+                    <Text font="caption" fontWeight="semibold" foregroundStyle="accentColor"
+                      frame={{ width: 26 }}>
+                      {it.qno}
+                    </Text>
+                    <Text lineLimit={2}>{it.title}</Text>
+                  </HStack>
+                </NavigationLink>
+              ))}
+            </Section>
+          )
+        })}
       </List>
     </NavigationStack>
   )
@@ -553,7 +586,10 @@ function Root() {
       <Tab title="题库" systemImage="books.vertical" value={1}>
         <BrowseTab />
       </Tab>
-      <Tab title="统计" systemImage="chart.bar" value={2}>
+      <Tab title="原文" systemImage="doc.text" value={2}>
+        <ArticlesTab />
+      </Tab>
+      <Tab title="统计" systemImage="chart.bar" value={3}>
         <StatsTab />
       </Tab>
     </TabView>

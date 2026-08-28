@@ -31,6 +31,16 @@ export function warmArticles(): void {
   loadArticles()
 }
 
+/** 列出某个专题下的全部原文篇目，按题号排序 */
+export function listArticles(deck: string): { qno: number; title: string }[] {
+  const all = loadArticles()
+  const d = all?.[deck]
+  if (d == null) return []
+  return Object.keys(d)
+    .map(k => ({ qno: Number(k), title: d[k].title }))
+    .sort((a, b) => a.qno - b.qno)
+}
+
 export function hasArticle(deck: string, qno: number): boolean {
   const a = loadArticles()
   return a != null && a[deck] != null && a[deck][String(qno)] != null
