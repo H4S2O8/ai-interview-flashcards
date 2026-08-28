@@ -112,8 +112,14 @@ type SeedFile = {
 
 export async function seedIfNeeded(force = false): Promise<{ imported: number; skipped: boolean }> {
   const db = await openDB()
-  const raw = FileManager.readAsStringSync(Path.join(Script.directory, "cards.json"))
-  const seed = JSON.parse(raw) as SeedFile
+
+  // cards.json 可能没跟着一起导入（比如脚本从私有仓库分发时数据单独放）。
+  // 这种情况下 App 照常可用，只是题库是空的，用户可以补上文件后从「统计 → 重新导入卡片」再来一次。
+  const seedPath = Path.join(Script.directory, "cards.json")
+  if (!FileManager.existsSync(seedPath)) {
+    return { imported: 0, skipped: true }
+  }
+  const seed = JSON.parse(FileManager.readAsStringSync(seedPath)) as SeedFile
 
   const current = await db.fetchOne<{ v: string }>("SELECT v FROM meta WHERE k = 'seed_version'")
   if (!force && current != null && Number(current.v) >= seed.version) {
