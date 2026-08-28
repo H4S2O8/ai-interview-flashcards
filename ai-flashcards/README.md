@@ -65,7 +65,7 @@
 
 问答按「一道题」保存（`deck` + 题号），同一题拆出的多张卡共享记录。清空复习进度不会删这些记录；可在询问页清空本题记录。
 
-接口在「统计 → LLM 接口」里直接填输入框，点「保存接口配置」。询问页底部同样有这三项。主界面已经全屏 present，不能再用 `Dialog.prompt`（会静默失败）。
+接口在「统计 → LLM 接口」或询问页底部：可保存多套端点/Key/模型，点列表切换，询问用打勾的那套。主界面已经全屏 present，不能再用 `Dialog.prompt`（会静默失败）。
 
 询问走 **OpenAI 兼容 Chat Completions**，`stream: true`，按 SSE 边收边显示，回答用 Scripting 的 `Markdown` 组件渲染。
 

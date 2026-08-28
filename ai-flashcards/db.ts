@@ -334,6 +334,7 @@ export async function resetProgress(): Promise<void> {
 
 // ---------------------------------------------------------------- LLM 配置与问答
 
+const META_LLM_STORE = "llm_store"
 const META_LLM_ENDPOINT = "llm_endpoint"
 const META_LLM_API_KEY = "llm_api_key"
 const META_LLM_MODEL = "llm_model"
@@ -342,7 +343,21 @@ const META_LLM_MODEL = "llm_model"
 export const DEFAULT_LLM_ENDPOINT = "https://api.x.ai/v1"
 export const DEFAULT_LLM_MODEL = "grok-4.5"
 
+export type LlmProfile = {
+  id: string
+  name: string
+  endpoint: string
+  apiKey: string
+  model: string
+}
+
+export type LlmStore = {
+  activeId: string
+  profiles: LlmProfile[]
+}
+
 export type LlmConfig = {
+  name: string
   endpoint: string
   apiKey: string
   model: string
@@ -362,27 +377,91 @@ async function metaSet(k: string, v: string): Promise<void> {
   )
 }
 
-export async function getLlmConfig(): Promise<LlmConfig> {
-  const endpoint = (await metaGet(META_LLM_ENDPOINT)) ?? ""
-  const apiKey = (await metaGet(META_LLM_API_KEY)) ?? ""
-  const model = (await metaGet(META_LLM_MODEL)) ?? ""
+function newProfileId(): string {
+  return "p" + Date.now().toString(36)
+}
+
+export function blankLlmProfile(name: string): LlmProfile {
   return {
-    endpoint: endpoint.trim() || DEFAULT_LLM_ENDPOINT,
-    apiKey: apiKey.trim(),
-    model: model.trim() || DEFAULT_LLM_MODEL,
+    id: newProfileId(),
+    name,
+    endpoint: DEFAULT_LLM_ENDPOINT,
+    apiKey: "",
+    model: DEFAULT_LLM_MODEL,
   }
 }
 
-export async function setLlmEndpoint(v: string): Promise<void> {
-  await metaSet(META_LLM_ENDPOINT, v.trim())
+export function activeLlmProfile(store: LlmStore): LlmProfile {
+  for (const p of store.profiles) {
+    if (p.id === store.activeId) return p
+  }
+  return store.profiles[0]
 }
 
-export async function setLlmApiKey(v: string): Promise<void> {
-  await metaSet(META_LLM_API_KEY, v.trim())
+function normalizeProfile(p: any, fallbackName: string): LlmProfile | null {
+  if (p == null || typeof p !== "object") return null
+  const id = typeof p.id === "string" && p.id ? p.id : newProfileId()
+  const name = typeof p.name === "string" && p.name.trim() ? p.name.trim() : fallbackName
+  const endpoint = typeof p.endpoint === "string" && p.endpoint.trim()
+    ? p.endpoint.trim()
+    : DEFAULT_LLM_ENDPOINT
+  const apiKey = typeof p.apiKey === "string" ? p.apiKey.trim() : ""
+  const model = typeof p.model === "string" && p.model.trim() ? p.model.trim() : DEFAULT_LLM_MODEL
+  return { id, name, endpoint, apiKey, model }
 }
 
-export async function setLlmModel(v: string): Promise<void> {
-  await metaSet(META_LLM_MODEL, v.trim())
+async function migrateLegacyConfig(): Promise<LlmStore> {
+  const endpoint = ((await metaGet(META_LLM_ENDPOINT)) ?? "").trim() || DEFAULT_LLM_ENDPOINT
+  const apiKey = ((await metaGet(META_LLM_API_KEY)) ?? "").trim()
+  const model = ((await metaGet(META_LLM_MODEL)) ?? "").trim() || DEFAULT_LLM_MODEL
+  const p: LlmProfile = {
+    id: newProfileId(),
+    name: "默认",
+    endpoint,
+    apiKey,
+    model,
+  }
+  return { activeId: p.id, profiles: [p] }
+}
+
+export async function loadLlmStore(): Promise<LlmStore> {
+  const raw = await metaGet(META_LLM_STORE)
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      const list: LlmProfile[] = []
+      if (Array.isArray(parsed?.profiles)) {
+        for (let i = 0; i < parsed.profiles.length; i++) {
+          const p = normalizeProfile(parsed.profiles[i], "配置 " + (i + 1))
+          if (p != null) list.push(p)
+        }
+      }
+      if (list.length > 0) {
+        const activeId = typeof parsed.activeId === "string" && list.some(p => p.id === parsed.activeId)
+          ? parsed.activeId
+          : list[0].id
+        return { activeId, profiles: list }
+      }
+    } catch { /* 坏 JSON，走旧字段 */ }
+  }
+  const migrated = await migrateLegacyConfig()
+  await saveLlmStore(migrated)
+  return migrated
+}
+
+export async function saveLlmStore(store: LlmStore): Promise<void> {
+  const active = activeLlmProfile(store)
+  await metaSet(META_LLM_STORE, JSON.stringify(store))
+  // 顺手镜像当前套，旧版还能读到
+  await metaSet(META_LLM_ENDPOINT, active.endpoint)
+  await metaSet(META_LLM_API_KEY, active.apiKey)
+  await metaSet(META_LLM_MODEL, active.model)
+}
+
+export async function getLlmConfig(): Promise<LlmConfig> {
+  const store = await loadLlmStore()
+  const p = activeLlmProfile(store)
+  return { name: p.name, endpoint: p.endpoint, apiKey: p.apiKey, model: p.model }
 }
 
 export type ChatTurn = {
