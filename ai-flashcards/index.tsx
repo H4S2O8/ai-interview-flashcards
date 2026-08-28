@@ -1,5 +1,5 @@
 import {
-  Button, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
+  Button, DragGesture, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
   Notification, ProgressView, RoundedRectangle, Script, ScrollView, Section, Spacer, Tab, TabView, Text,
   VStack, ZStack,
   useEffect, useMemo, useObservable, useState,
@@ -44,7 +44,103 @@ function VersionBadge() {
   )
 }
 
-function ReviewTab() {
+type Observable<T> = { value: T; setValue: (v: T) => void }
+
+/**
+ * 卡片外壳。只有这个组件读 dragX.value，
+ * 所以拖动时只有它重渲染 —— children 是父组件传下来的同一批元素对象，
+ * React 会跳过它们的重渲染。之前把 .value 读在 ReviewTab 顶层，
+ * 等于每帧重建整页（含长答案文本和四个按钮），这是「不跟手」的主因。
+ */
+function SwipeCard({
+  dragX, tick, phase, armed, onSwipeEnd, children,
+}: {
+  dragX: Observable<number>
+  tick: Observable<number>
+  phase: Phase
+  armed: boolean
+  onSwipeEnd: (predictedX: number) => void
+  children?: any
+}) {
+  // 方向锁。放在 useMemo 的可变对象里，读写它不会触发重渲染。
+  const axis = useMemo(() => ({ lock: 0 }), [])
+
+  const offset = dragX.value
+  const swipeRatio = Math.min(Math.abs(offset) / SWIPE_THRESHOLD, 1)
+  const swipingRight = offset > 0
+  const stampGrade = swipingRight ? SWIPE_RIGHT_GRADE : SWIPE_LEFT_GRADE
+  const showStamp = phase === "idle" && armed && Math.abs(offset) > 10
+
+  return (
+    <VStack
+      spacing={0}
+      padding={{ horizontal: 18 }}
+      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      background={
+        <RoundedRectangle cornerRadius={26} fill="secondarySystemGroupedBackground"
+          stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 1 } }} />
+      }
+      offset={{ x: offset, y: Math.abs(offset) * 0.04 }}
+      rotationEffect={offset / 26}
+      opacity={phase === "idle" ? 1 : 0}
+      animation={{
+        animation: Animation.spring({ duration: 0.28, bounce: 0.16 }),
+        value: `${phase}:${tick.value}`,
+      }}
+      // 用 simultaneousGesture 而不是 onDragGesture：
+      // 卡片里有 ScrollView，两者会抢手势，仲裁延迟就是「不跟手」。
+      // 同时识别 + 自己做方向锁，横滑归卡片、纵滑归滚动。
+      simultaneousGesture={
+        DragGesture()
+          .onChanged(d => {
+            if (phase !== "idle") return
+            const dx = d.translation.width
+            const dy = d.translation.height
+            if (axis.lock === 0) {
+              if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return   // 死区尽量小
+              axis.lock = Math.abs(dx) > Math.abs(dy) ? 1 : -1
+            }
+            if (axis.lock !== 1) return
+            dragX.setValue(dx)
+          })
+          .onEnded(d => {
+            const locked = axis.lock
+            axis.lock = 0
+            if (locked !== 1) return
+            onSwipeEnd(d.predictedEndTranslation.width)
+          })
+      }
+      overlay={
+        {
+          alignment: swipingRight ? "topLeading" : "topTrailing",
+          content: (
+            <HStack padding={{ horizontal: 26, top: 26 }}>
+              <HStack
+                padding={{ horizontal: 14, vertical: 6 }}
+                background={
+                  <RoundedRectangle cornerRadius={10} fill={{ color: GRADE_COLORS[stampGrade], opacity: 0.14 }}
+                    stroke={{ shapeStyle: GRADE_COLORS[stampGrade], strokeStyle: { lineWidth: 2.5 } }} />
+                }
+                rotationEffect={swipingRight ? -14 : 14}
+                opacity={showStamp ? swipeRatio : 0}
+              >
+                <Text font="headline" fontWeight="heavy" foregroundStyle={GRADE_COLORS[stampGrade]}>
+                  {GRADE_LABELS[stampGrade]}
+                </Text>
+              </HStack>
+            </HStack>
+          )
+        }
+      }
+    >
+      {children}
+    </VStack>
+  )
+}
+
+function ReviewTab({ onClose }: { onClose: () => void }) {
+  // 全屏呈现没有下滑关闭，关闭入口挂在这里
+  const closeBar = { topBarLeading: <Button title="关闭" systemImage="xmark" action={onClose} /> }
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -111,7 +207,7 @@ function ReviewTab() {
 
   if (queue == null) {
     return (
-      <VStack navigationTitle="今日复习" frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+      <VStack navigationTitle="今日复习" toolbar={closeBar} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
         <Text foregroundStyle="secondaryLabel">载入中…</Text>
       </VStack>
     )
@@ -121,7 +217,8 @@ function ReviewTab() {
 
   if (card == null) {
     return (
-      <VStack navigationTitle="今日复习" spacing={14} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      <VStack navigationTitle="今日复习" toolbar={closeBar} spacing={14}
+        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
         background="systemGroupedBackground">
         <Spacer />
         <Text font="largeTitle">{done > 0 ? "🎉" : "☕️"}</Text>
@@ -141,21 +238,14 @@ function ReviewTab() {
 
   const total = queue.length
   const remaining = total - index
-  const offset = dragX.value
   const progress = total === 0 ? 0 : index / total
-
-  // 滑动进度 0~1，用来驱动印章的浓淡
-  const swipeRatio = Math.min(Math.abs(offset) / SWIPE_THRESHOLD, 1)
-  const swipingRight = offset > 0
-  const stampGrade = swipingRight ? SWIPE_RIGHT_GRADE : SWIPE_LEFT_GRADE
-  const showStamp = phase === "idle" && revealed && Math.abs(offset) > 12
-
-  const cardOpacity = phase === "idle" ? 1 : 0
-  const animValue = `${phase}:${tick.value}`
+  // 注意：这里刻意不读 dragX.value / tick.value —— 一读就会让整页每帧重渲染。
+  // 位移相关的一切都封在 SwipeCard 里。
 
   return (
     <VStack
       navigationTitle="今日复习"
+      toolbar={closeBar}
       spacing={0}
       frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
       // 页面灰底 + 卡片白底，才有对比。
@@ -197,47 +287,12 @@ function ReviewTab() {
         ) : null}
 
         {/* 正面这张 */}
-        <VStack
-          spacing={0}
-          padding={{ horizontal: 18 }}
-          frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
-          background={
-            <RoundedRectangle cornerRadius={26} fill="secondarySystemGroupedBackground"
-              stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 1 } }} />
-          }
-          offset={{ x: offset, y: Math.abs(offset) * 0.05 }}
-          rotationEffect={offset / 24}
-          opacity={cardOpacity}
-          animation={{ animation: Animation.spring({ duration: 0.3, bounce: 0.16 }), value: animValue }}
-          onDragGesture={{
-            minDistance: 10,
-            onChanged: d => { if (phase === "idle") dragX.setValue(d.translation.width) },
-            onEnded: d => onDragEnded(d.predictedEndTranslation.width),
-          }}
-          overlay={
-            {
-              // 用 alignment 定位而不是硬编码坐标，才能适配不同屏宽
-              alignment: swipingRight ? "topLeading" : "topTrailing",
-              content: (
-                // 外层只负责离卡片边缘的距离，内层才是印章本身的内边距
-                <HStack padding={{ horizontal: 26, top: 26 }}>
-                  <HStack
-                    padding={{ horizontal: 14, vertical: 6 }}
-                    background={
-                      <RoundedRectangle cornerRadius={10} fill={{ color: GRADE_COLORS[stampGrade], opacity: 0.14 }}
-                        stroke={{ shapeStyle: GRADE_COLORS[stampGrade], strokeStyle: { lineWidth: 2.5 } }} />
-                    }
-                    rotationEffect={swipingRight ? -14 : 14}
-                    opacity={showStamp ? swipeRatio : 0}
-                  >
-                    <Text font="headline" fontWeight="heavy" foregroundStyle={GRADE_COLORS[stampGrade]}>
-                      {GRADE_LABELS[stampGrade]}
-                    </Text>
-                  </HStack>
-                </HStack>
-              )
-            }
-          }
+        <SwipeCard
+          dragX={dragX}
+          tick={tick}
+          phase={phase}
+          armed={revealed}
+          onSwipeEnd={onDragEnded}
         >
           <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
             <VStack spacing={16} padding={{ horizontal: 22, vertical: 26 }} alignment="leading">
@@ -264,7 +319,7 @@ function ReviewTab() {
               )}
             </VStack>
           </ScrollView>
-        </VStack>
+        </SwipeCard>
       </ZStack>
 
       {/* ── 底部操作区 ───────────────────────────────── */}
@@ -469,22 +524,22 @@ function StatsTab() {
 
 function Root() {
   const selection = useObservable(0)
+  const dismiss = Navigation.useDismiss()
   const [dueBadge, setDueBadge] = useState(0)
   useEffect(() => { countDue().then(setDueBadge) }, [])
 
   return (
     <TabView selection={selection}>
       <Tab title="复习" systemImage="rectangle.on.rectangle.angled" value={0} badge={dueBadge > 0 ? dueBadge : undefined}>
-        <NavigationStack><ReviewTab /></NavigationStack>
+        <NavigationStack>
+          <ReviewTab onClose={() => dismiss()} />
+        </NavigationStack>
       </Tab>
       <Tab title="题库" systemImage="books.vertical" value={1}>
         <BrowseTab />
       </Tab>
       <Tab title="统计" systemImage="chart.bar" value={2}>
         <StatsTab />
-      </Tab>
-      <Tab title="诊断" systemImage="stethoscope" value={3}>
-        <NavigationStack><DiagView /></NavigationStack>
       </Tab>
     </TabView>
   )
@@ -493,7 +548,12 @@ function Root() {
 async function main() {
   await openDB()
   await seedIfNeeded()
-  await Navigation.present({ element: <Root /> })
+  // 默认是 pageSheet（抽屉），下滑即关闭 —— 复习页本身就要纵向滚动，很容易误关。
+  // 改成全屏呈现；代价是没有了下滑关闭，所以 Root 里必须自带关闭按钮。
+  await Navigation.present({
+    element: <Root />,
+    modalPresentationStyle: "fullScreen",
+  })
   // 必须显式退出，否则脚本实例不会释放
   Script.exit()
 }

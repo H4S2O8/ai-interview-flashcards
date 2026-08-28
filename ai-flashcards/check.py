@@ -29,7 +29,9 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
     known = imported | defined | GLOBALS
 
     # JSX 里用到的大写开头组件
-    used = set(re.findall(r'<([A-Z]\w*)[\s/>]', src))
+    # 要求 < 前面是空白/括号/逗号，才算 JSX 标签；
+    # 这样 useState<Card[]> 和 type Observable<T> 这类泛型不会被误判
+    used = set(re.findall(r'(?<=[\s(){}>,])<([A-Z]\w*)[\s/>]', src))
     missing = sorted(used - known)
     if missing:
         fail += 1
