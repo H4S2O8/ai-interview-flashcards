@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""静态检查：JSX 里用到的组件、以及顶层引用的标识符，是否都有来源。
+esbuild 只查语法，抓不到「引用了一个不存在的组件」这类错误。"""
+import re, sys, pathlib
+
+# Scripting 提供的全局对象（不需要 import）
+GLOBALS = {
+    "SQLite","FileManager","DateComponents","CalendarNotificationTrigger",
+    "TimeIntervalNotificationTrigger","LocationNotificationTrigger","Animation",
+    "Data","console","JSON","Math","Date","Number","String","Object","Array",
+    "Promise","Set","Map","setTimeout","clearTimeout","setInterval","clearInterval",
+    "LanguageModelSession","Crypto","UUID",
+}
+
+fail = 0
+for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob("*.ts")):
+    src = f.read_text(encoding="utf-8")
+
+    imported = set()
+    for m in re.finditer(r'import\s*\{([^}]*)\}\s*from', src):
+        for part in m.group(1).split(","):
+            name = part.strip().replace("type ", "").split(" as ")[-1].strip()
+            if name: imported.add(name)
+
+    defined = set(re.findall(r'^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_]\w*)', src, re.M))
+    defined |= set(re.findall(r'^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_]\w*)', src, re.M))
+    defined |= set(re.findall(r'^\s*(?:export\s+)?type\s+([A-Za-z_]\w*)', src, re.M))
+
+    known = imported | defined | GLOBALS
+
+    # JSX 里用到的大写开头组件
+    used = set(re.findall(r'<([A-Z]\w*)[\s/>]', src))
+    missing = sorted(used - known)
+    if missing:
+        fail += 1
+        print(f"✗ {f}: JSX 引用了未定义的组件 -> {', '.join(missing)}")
+    else:
+        print(f"✓ {f}: {len(used)} 个组件全部有来源")
+
+sys.exit(1 if fail else 0)

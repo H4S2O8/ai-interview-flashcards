@@ -27,6 +27,22 @@ const SWIPE_RIGHT_GRADE: Grade = 2
 /** idle 正常 / flying 飞出中 / entering 新卡入场前的一帧 */
 type Phase = "idle" | "flying" | "entering"
 
+/** 右下角的版本角标：脚本版本取自 script.json，题库版本取自已导入的 cards.json */
+function VersionBadge() {
+  const [seed, setSeed] = useState<number | null>(null)
+  useEffect(() => { seedVersion().then(setSeed) }, [])
+
+  const app = Script.metadata?.version ?? "?"
+  return (
+    <HStack padding={{ horizontal: 18, bottom: 4 }}>
+      <Spacer />
+      <Text font="caption2" foregroundStyle="tertiaryLabel">
+        v{app}{seed != null ? ` · 题库 v${seed}` : ""}
+      </Text>
+    </HStack>
+  )
+}
+
 function ReviewTab() {
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [index, setIndex] = useState(0)
