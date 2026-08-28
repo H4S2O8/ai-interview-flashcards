@@ -58,4 +58,24 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
             fail += 1
             print(f"✗ {f}: {why}")
 
+    # Hooks 规则：hook 不能出现在提前 return 之后。
+    # 首次渲染若走了提前 return，该 hook 不会执行；后续渲染执行到它时
+    # hook 数量对不上，渲染直接失败（症状：界面卡在上一次成功渲染的状态）。
+    funcs = re.split(r'\n(?=(?:export\s+)?function\s)', code)
+    for fn in funcs:
+        m = re.match(r'(?:export\s+)?function\s+(\w+)', fn)
+        if not m: continue
+        name = m.group(1)
+        # 提前 return 通常写在 if 块里（缩进 4 空格），不只是函数顶层（2 空格）
+        ret = re.search(r'\n {2,4}return[\s(;]', fn)
+        if not ret: continue
+        tail = fn[ret.end():]
+        late = re.findall(r'\b(use[A-Z]\w*)\s*\(', tail)
+        # 排除定义在回调里的（粗略：只看缩进 2 空格的顶层声明）
+        late_top = re.findall(r'\n  (?:const|let)\s+\w+\s*=\s*(use[A-Z]\w*)\s*\(', tail)
+        late_top += re.findall(r'\n  (use[A-Z]\w*)\s*\(', tail)
+        if late_top:
+            fail += 1
+            print(f"✗ {f}: {name}() 在提前 return 之后调用了 {', '.join(sorted(set(late_top)))} —— 违反 Hooks 规则")
+
 sys.exit(1 if fail else 0)

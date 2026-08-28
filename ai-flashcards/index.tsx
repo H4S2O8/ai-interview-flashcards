@@ -123,6 +123,22 @@ function SwipeCard({
   )
 }
 
+/**
+ * 卡片不再滚动，靠字号自适应兜住最长的几张。按内容估算行数选档。
+ * 实测 132 张里 89% 保持原字号，10% 降一档，1 张降两档。
+ * 刻意做成普通函数而不是 useMemo —— 它的调用点在两个提前返回之后，
+ * 写成 hook 会违反 Hooks 规则（首次渲染 queue 为 null 时根本不会执行到），
+ * 导致数据到达后 hook 数量对不上、渲染失败、界面永远卡在「载入中」。
+ */
+function fitFonts(front: string, back: string, revealed: boolean) {
+  const lines = (t: string) =>
+    t.split("\n").reduce((n, p) => n + Math.max(1, Math.ceil(p.length / 19)), 0)
+  const totalLines = lines(front) + (revealed ? lines(back) : 0)
+  if (totalLines <= 14) return { front: "title3", back: "body" } as const
+  if (totalLines <= 19) return { front: "headline", back: "subheadline" } as const
+  return { front: "subheadline", back: "footnote" } as const
+}
+
 function ReviewTab({ onClose }: { onClose: () => void }) {
   // 全屏呈现没有下滑关闭，关闭入口挂在这里
   const closeBar = { topBarLeading: <Button title="关闭" systemImage="xmark" action={onClose} /> }
@@ -225,17 +241,7 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
   const remaining = total - index
   const progress = total === 0 ? 0 : index / total
 
-  // 卡片不再滚动，靠字号自适应兜住最长的那几张。
-  // 实测 132 张里 94% 在 19 行以内，最长 24 行，只有 6% 需要缩字号。
-  // 用纯 JS 估行数而不是 minimumScaleFactor —— 这个框架没有那个属性。
-  const fit = useMemo(() => {
-    const lines = (t: string) =>
-      t.split("\n").reduce((n, p) => n + Math.max(1, Math.ceil(p.length / 19)), 0)
-    const totalLines = lines(card.front) + (revealed ? lines(card.back) : 0)
-    if (totalLines <= 14) return { front: "title3", back: "body" }
-    if (totalLines <= 19) return { front: "headline", back: "subheadline" }
-    return { front: "subheadline", back: "footnote" }
-  }, [card.front, card.back, revealed])
+  const fit = fitFonts(card.front, card.back, revealed)
   // 注意：这里刻意不读 dragX.value / tick.value —— 一读就会让整页每帧重渲染。
   // 位移相关的一切都封在 SwipeCard 里。
 
