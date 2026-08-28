@@ -37,4 +37,16 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
     else:
         print(f"✓ {f}: {len(used)} 个组件全部有来源")
 
+    # 文档里查不到用例的写法，用一次踩一次坑，直接列黑名单
+    RISKY = [
+        (r'<RoundedRectangle[^>]*padding=', "RoundedRectangle 直接带 padding（文档无用例，请套一层 HStack）"),
+        (r'overlay=\{[^}]*undefined',       "overlay 传 undefined（文档无用例，请常驻渲染 + opacity 控制）"),
+        (r'<ProgressView[^>]*padding=',     "ProgressView 直接带 padding（文档无用例，请套一层 HStack）"),
+        (r'<(VStack|HStack|ZStack)[^>]*shadow=', "容器上用 shadow（文档唯一用例在 Text 上）"),
+    ]
+    for pat, why in RISKY:
+        if re.search(pat, src, re.S):
+            fail += 1
+            print(f"✗ {f}: {why}")
+
 sys.exit(1 if fail else 0)

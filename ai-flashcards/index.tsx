@@ -163,26 +163,25 @@ function ReviewTab() {
       </HStack>
 
       {/* 细进度条 */}
-      <ProgressView
-        progressViewStyle="linear"
-        value={progress}
-        total={1}
-        padding={{ horizontal: 20, top: 8 }}
-      />
+      <HStack padding={{ horizontal: 20, top: 8 }}>
+        <ProgressView progressViewStyle="linear" value={progress} total={1} />
+      </HStack>
 
       {/* ── 卡片区 ───────────────────────────────────── */}
       <ZStack frame={{ maxWidth: "infinity", maxHeight: "infinity" }} padding={{ top: 14, bottom: 6 }}>
 
         {/* 背后的牌堆，暗示还有多少张 */}
         {remaining > 2 ? (
-          <RoundedRectangle cornerRadius={26} fill="quaternarySystemFill"
-            padding={{ horizontal: 38, top: 26, bottom: 14 }}
-            frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />
+          <HStack padding={{ horizontal: 38, top: 26, bottom: 14 }}>
+            <RoundedRectangle cornerRadius={26} fill="quaternarySystemFill"
+              frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />
+          </HStack>
         ) : null}
         {remaining > 1 ? (
-          <RoundedRectangle cornerRadius={26} fill="tertiarySystemFill"
-            padding={{ horizontal: 28, top: 14, bottom: 14 }}
-            frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />
+          <HStack padding={{ horizontal: 28, top: 14, bottom: 14 }}>
+            <RoundedRectangle cornerRadius={26} fill="tertiarySystemFill"
+              frame={{ maxWidth: "infinity", maxHeight: "infinity" }} />
+          </HStack>
         ) : null}
 
         {/* 正面这张 */}
@@ -194,7 +193,6 @@ function ReviewTab() {
             <RoundedRectangle cornerRadius={26} fill="secondarySystemGroupedBackground"
               stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 0.5 } }} />
           }
-          shadow={{ color: "rgba(0,0,0,0.16)", radius: 16, x: 0, y: 6 }}
           offset={{ x: offset, y: Math.abs(offset) * 0.05 }}
           rotationEffect={offset / 24}
           opacity={cardOpacity}
@@ -205,7 +203,7 @@ function ReviewTab() {
             onEnded: d => onDragEnded(d.predictedEndTranslation.width),
           }}
           overlay={
-            showStamp ? {
+            {
               // 用 alignment 定位而不是硬编码坐标，才能适配不同屏宽
               alignment: swipingRight ? "topLeading" : "topTrailing",
               content: (
@@ -218,7 +216,7 @@ function ReviewTab() {
                         stroke={{ shapeStyle: GRADE_COLORS[stampGrade], strokeStyle: { lineWidth: 2.5 } }} />
                     }
                     rotationEffect={swipingRight ? -14 : 14}
-                    opacity={swipeRatio}
+                    opacity={showStamp ? swipeRatio : 0}
                   >
                     <Text font="headline" fontWeight="heavy" foregroundStyle={GRADE_COLORS[stampGrade]}>
                       {GRADE_LABELS[stampGrade]}
@@ -226,7 +224,7 @@ function ReviewTab() {
                   </HStack>
                 </HStack>
               )
-            } : undefined
+            }
           }
         >
           <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
