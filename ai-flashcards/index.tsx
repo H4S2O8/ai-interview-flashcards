@@ -54,8 +54,11 @@ function ReviewTab() {
   const dragX = useObservable(0)
   // 只在「松手 / 换卡 / 翻面」时 +1。动画绑在它身上，
   // 所以拖动过程本身不带动画（卡片严格跟手），松手才有弹性回弹。
-  const [tick, setTick] = useState(0)
-  const animate = () => setTick(t => t + 1)
+  // 用 observable 而非 useState：读 .value 总是最新的，
+  // 既不用函数式 setState（文档里只出现过 setX(x + 1) 这一种写法），
+  // 也不会在 setTimeout 的闭包里拿到陈旧值。
+  const tick = useObservable(0)
+  const animate = () => tick.setValue(tick.value + 1)
 
   async function load() {
     setQueue(await dueCards(SESSION_LIMIT))
@@ -80,9 +83,9 @@ function ReviewTab() {
     setTimeout(async () => {
       await gradeCard(card, g)
       dragX.setValue(0)          // 此时卡片已透明，位移归零看不见
-      setDone(d => d + 1)
+      setDone(done + 1)
       setRevealed(false)
-      setIndex(i => i + 1)
+      setIndex(index + 1)
       setPhase("entering")
       setTimeout(() => { setPhase("idle"); animate() }, 20)
     }, FLY_MS)
@@ -117,7 +120,8 @@ function ReviewTab() {
 
   if (card == null) {
     return (
-      <VStack navigationTitle="今日复习" spacing={14} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+      <VStack navigationTitle="今日复习" spacing={14} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+        background="systemGroupedBackground">
         <Spacer />
         <Text font="largeTitle">{done > 0 ? "🎉" : "☕️"}</Text>
         <Text font="title3" fontWeight="semibold">
@@ -146,10 +150,17 @@ function ReviewTab() {
   const showStamp = phase === "idle" && revealed && Math.abs(offset) > 12
 
   const cardOpacity = phase === "idle" ? 1 : 0
-  const animValue = `${phase}:${tick}`
+  const animValue = `${phase}:${tick.value}`
 
   return (
-    <VStack navigationTitle="今日复习" spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+    <VStack
+      navigationTitle="今日复习"
+      spacing={0}
+      frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+      // 页面灰底 + 卡片白底，才有对比。
+      // 之前页面和卡片都是白的，卡片等于隐形。
+      background="systemGroupedBackground"
+    >
 
       {/* ── 顶部：题号 + 进度 ─────────────────────────── */}
       <HStack padding={{ horizontal: 20, top: 6 }}>
@@ -191,7 +202,7 @@ function ReviewTab() {
           frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
           background={
             <RoundedRectangle cornerRadius={26} fill="secondarySystemGroupedBackground"
-              stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 0.5 } }} />
+              stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 1 } }} />
           }
           offset={{ x: offset, y: Math.abs(offset) * 0.05 }}
           rotationEffect={offset / 24}

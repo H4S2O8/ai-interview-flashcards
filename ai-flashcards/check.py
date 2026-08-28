@@ -43,6 +43,7 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
         (r'overlay=\{[^}]*undefined',       "overlay 传 undefined（文档无用例，请常驻渲染 + opacity 控制）"),
         (r'<ProgressView[^>]*padding=',     "ProgressView 直接带 padding（文档无用例，请套一层 HStack）"),
         (r'<(VStack|HStack|ZStack)[^>]*shadow=', "容器上用 shadow（文档唯一用例在 Text 上）"),
+        (r'set[A-Z]\w*\(\s*\w+\s*=>', "函数式 setState（文档只出现过 setX(x + 1)，此框架未必支持）"),
     ]
     for pat, why in RISKY:
         if re.search(pat, src, re.S):
