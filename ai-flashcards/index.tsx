@@ -1,6 +1,6 @@
 import {
   Button, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
-  Notification, Script, ScrollView, Section, Spacer, Tab, TabView, Text, VStack,
+  Notification, Script, ScrollView, Section, Spacer, Tab, TabView, Text, VStack, ZStack,
   useEffect, useMemo, useObservable, useState,
 } from "scripting"
 
@@ -14,17 +14,28 @@ const REMINDER_HOUR = 20
 
 const GRADE_COLORS = ["systemRed", "systemOrange", "systemBlue", "systemGreen"] as const
 
+/** 横向拖动超过这个距离（点）就判定为一次滑动评分 */
+const SWIPE_THRESHOLD = 100
+/** 左滑给「忘了」，右滑给「良好」——上下滑没有绑定，见下方注释 */
+const SWIPE_LEFT_GRADE: Grade = 0
+const SWIPE_RIGHT_GRADE: Grade = 2
+
 function ReviewTab() {
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [done, setDone] = useState(0)
 
+  // 拖动位移用 observable 而不是 useState：拖动过程中每帧都在变，
+  // 走 observable 的绑定通道比每帧触发一次组件重渲染更稳。
+  const dragX = useObservable(0)
+
   async function load() {
     setQueue(await dueCards(SESSION_LIMIT))
     setIndex(0)
     setRevealed(false)
     setDone(0)
+    dragX.setValue(0)
   }
 
   useEffect(() => { load() }, [])
@@ -32,6 +43,8 @@ function ReviewTab() {
   async function grade(g: Grade) {
     const card = queue?.[index]
     if (card == null) return
+    // 先把卡片弹回原位，否则下一张会带着上一张的位移出场
+    dragX.setValue(0)
     await gradeCard(card, g)
     setDone(done + 1)
     setRevealed(false)
@@ -64,6 +77,24 @@ function ReviewTab() {
   }
 
   const remaining = queue.length - index
+  const offset = dragX.value
+  // 拖过阈值时提示这一松手会打哪一档
+  const armed: Grade | null =
+    offset <= -SWIPE_THRESHOLD ? SWIPE_LEFT_GRADE
+      : offset >= SWIPE_THRESHOLD ? SWIPE_RIGHT_GRADE
+      : null
+
+  function onDragEnded(predictedX: number) {
+    if (!revealed) {
+      // 答案还没显示，滑动只当作「翻面」，不评分
+      dragX.setValue(0)
+      if (Math.abs(predictedX) > SWIPE_THRESHOLD) setRevealed(true)
+      return
+    }
+    if (predictedX <= -SWIPE_THRESHOLD) grade(SWIPE_LEFT_GRADE)
+    else if (predictedX >= SWIPE_THRESHOLD) grade(SWIPE_RIGHT_GRADE)
+    else dragX.setValue(0)
+  }
 
   return (
     <VStack navigationTitle="今日复习" spacing={0} frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
@@ -73,40 +104,69 @@ function ReviewTab() {
         <Text font="caption" foregroundStyle="secondaryLabel">剩 {remaining} 张 · 已复习 {done}</Text>
       </HStack>
 
-      <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-        <VStack spacing={20} padding={20} alignment="leading">
-          <Text font="title3" fontWeight="semibold">{card.front}</Text>
+      <ZStack
+        frame={{ maxWidth: "infinity", maxHeight: "infinity" }}
+        offset={{ x: offset, y: 0 }}
+        rotationEffect={offset / 30}
+        opacity={1 - Math.min(Math.abs(offset) / 600, 0.3)}
+        animation={{ animation: Animation.spring({ duration: 0.25, bounce: 0.15 }), value: offset }}
+        onDragGesture={{
+          minDistance: 12,
+          onChanged: d => dragX.setValue(d.translation.width),
+          onEnded: d => onDragEnded(d.predictedEndTranslation.width),
+        }}
+      >
+        <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
+          <VStack spacing={20} padding={20} alignment="leading">
+            <Text font="title3" fontWeight="semibold">{card.front}</Text>
 
-          {revealed ? (
-            <VStack spacing={12} alignment="leading">
-              <Text font="caption" foregroundStyle="tertiaryLabel">答案</Text>
-              <Text font="body">{card.back}</Text>
-            </VStack>
-          ) : (
-            <Text font="footnote" foregroundStyle="tertiaryLabel">先自己在心里答一遍，再点下面显示答案</Text>
-          )}
-        </VStack>
-      </ScrollView>
+            {revealed ? (
+              <VStack spacing={12} alignment="leading">
+                <Text font="caption" foregroundStyle="tertiaryLabel">答案</Text>
+                <Text font="body">{card.back}</Text>
+              </VStack>
+            ) : (
+              <Text font="footnote" foregroundStyle="tertiaryLabel">
+                先自己在心里答一遍，再点下面显示答案（左右滑动也可翻面）
+              </Text>
+            )}
+          </VStack>
+        </ScrollView>
+
+        {armed != null ? (
+          <Text
+            font="title2"
+            fontWeight="bold"
+            foregroundStyle={GRADE_COLORS[armed]}
+            padding={12}
+          >
+            {armed === SWIPE_LEFT_GRADE ? "← 忘了" : "良好 →"}
+          </Text>
+        ) : null}
+      </ZStack>
 
       {revealed ? (
-        <HStack spacing={8} padding={{ horizontal: 12, vertical: 10 }}>
-          {GRADE_LABELS.map((label, g) => (
-            <Button
-              action={() => grade(g as Grade)}
-              buttonStyle="bordered"
-              controlSize="large"
-              frame={{ maxWidth: "infinity" }}
-              tint={GRADE_COLORS[g]}
-            >
-              <VStack spacing={2}>
-                <Text font="subheadline" fontWeight="medium">{label}</Text>
-                <Text font="caption2" foregroundStyle="secondaryLabel">
-                  {previewInterval(card, g as Grade, Date.now())}
-                </Text>
-              </VStack>
-            </Button>
-          ))}
-        </HStack>
+        <VStack spacing={6} padding={{ horizontal: 12, bottom: 10 }}>
+          <HStack spacing={8}>
+            {GRADE_LABELS.map((label, g) => (
+              <Button
+                action={() => grade(g as Grade)}
+                buttonStyle="bordered"
+                controlSize="large"
+                frame={{ maxWidth: "infinity" }}
+                tint={GRADE_COLORS[g]}
+              >
+                <VStack spacing={2}>
+                  <Text font="subheadline" fontWeight="medium">{label}</Text>
+                  <Text font="caption2" foregroundStyle="secondaryLabel">
+                    {previewInterval(card, g as Grade, Date.now())}
+                  </Text>
+                </VStack>
+              </Button>
+            ))}
+          </HStack>
+          <Text font="caption2" foregroundStyle="tertiaryLabel">左滑 = 忘了 · 右滑 = 良好 · 困难/简单用按钮</Text>
+        </VStack>
       ) : (
         <Button
           title="显示答案"
