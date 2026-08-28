@@ -9,7 +9,7 @@ GLOBALS = {
     "TimeIntervalNotificationTrigger","LocationNotificationTrigger","Animation",
     "Data","console","JSON","Math","Date","Number","String","Object","Array",
     "Promise","Set","Map","setTimeout","clearTimeout","setInterval","clearInterval",
-    "LanguageModelSession","Crypto","UUID",
+    "LanguageModelSession","Crypto","UUID","fetch","Response","Headers",
 }
 
 fail = 0
@@ -62,7 +62,7 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
     # 而 FileManager / SQLite / Animation / DateComponents 等是真全局、不用导入。
     # 漏导入不会有语法错，只在运行到那一行时抛 ReferenceError ——
     # 若发生在 Navigation.present 之前，表现为「脚本在跑但前台一片空白」。
-    MUST_IMPORT = ["Path", "Script", "Navigation", "Notification", "Widget"]
+    MUST_IMPORT = ["Path", "Script", "Navigation", "Notification", "Widget", "Dialog"]
     for name in MUST_IMPORT:
         if re.search(r'\b' + name + r'\.', code) and name not in imported:
             fail += 1

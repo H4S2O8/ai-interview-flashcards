@@ -5,7 +5,7 @@ import {
 
 /**
  * 原文阅读器。
- * articles.json 是可选资源（约 280KB）：文件不在时本视图给出说明，
+ * articles.json 是可选资源（约 1.3MB）：文件不在时本视图给出说明，
  * 不影响 App 其余功能，和 cards.json 缺失时的处理方式一致。
  */
 
@@ -26,7 +26,7 @@ function loadArticles(): Record<string, Record<string, Article>> | null {
   return cache
 }
 
-/** 启动时预热，避免首次翻到带原文的卡时同步解析 280KB JSON 造成卡顿 */
+/** 启动时预热，避免首次翻到带原文的卡时同步解析 1.3MB JSON 造成卡顿 */
 export function warmArticles(): void {
   loadArticles()
 }

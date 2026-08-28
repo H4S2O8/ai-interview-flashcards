@@ -76,9 +76,18 @@ async function migrate(db: DB) {
       grade   INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+    CREATE TABLE IF NOT EXISTS chats (
+      id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      deck   TEXT    NOT NULL,
+      qno    INTEGER NOT NULL,
+      ts     INTEGER NOT NULL,
+      prompt TEXT    NOT NULL,
+      answer TEXT    NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_sched_due  ON sched(due);
     CREATE INDEX IF NOT EXISTS idx_cards_deck ON cards(deck, ord);
     CREATE INDEX IF NOT EXISTS idx_reviews_ts ON reviews(ts);
+    CREATE INDEX IF NOT EXISTS idx_chats_q    ON chats(deck, qno, ts);
   `)
 }
 
@@ -308,4 +317,99 @@ export async function resetProgress(): Promise<void> {
     [now]
   )
   await db.execute("DELETE FROM reviews")
+}
+
+// ---------------------------------------------------------------- LLM 配置与问答
+
+const META_LLM_ENDPOINT = "llm_endpoint"
+const META_LLM_API_KEY = "llm_api_key"
+const META_LLM_MODEL = "llm_model"
+
+/** SpaceXAI 的 OpenAI 兼容入口，用户可改成任意兼容端点 */
+export const DEFAULT_LLM_ENDPOINT = "https://api.x.ai/v1"
+export const DEFAULT_LLM_MODEL = "grok-4.5"
+
+export type LlmConfig = {
+  endpoint: string
+  apiKey: string
+  model: string
+}
+
+async function metaGet(k: string): Promise<string | null> {
+  const db = await openDB()
+  const row = await db.fetchOne<{ v: string }>("SELECT v FROM meta WHERE k = ?", [k])
+  return row?.v ?? null
+}
+
+async function metaSet(k: string, v: string): Promise<void> {
+  const db = await openDB()
+  await db.execute(
+    "INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
+    [k, v]
+  )
+}
+
+export async function getLlmConfig(): Promise<LlmConfig> {
+  const endpoint = (await metaGet(META_LLM_ENDPOINT)) ?? ""
+  const apiKey = (await metaGet(META_LLM_API_KEY)) ?? ""
+  const model = (await metaGet(META_LLM_MODEL)) ?? ""
+  return {
+    endpoint: endpoint.trim() || DEFAULT_LLM_ENDPOINT,
+    apiKey: apiKey.trim(),
+    model: model.trim() || DEFAULT_LLM_MODEL,
+  }
+}
+
+export async function setLlmEndpoint(v: string): Promise<void> {
+  await metaSet(META_LLM_ENDPOINT, v.trim())
+}
+
+export async function setLlmApiKey(v: string): Promise<void> {
+  await metaSet(META_LLM_API_KEY, v.trim())
+}
+
+export async function setLlmModel(v: string): Promise<void> {
+  await metaSet(META_LLM_MODEL, v.trim())
+}
+
+export type ChatTurn = {
+  id: number
+  deck: string
+  qno: number
+  ts: number
+  prompt: string
+  answer: string
+}
+
+/** 问答挂在「一道题」上，同一题拆出的多张卡共享记录 */
+export async function listChats(deck: string, qno: number): Promise<ChatTurn[]> {
+  const db = await openDB()
+  return db.fetchAll<ChatTurn>(
+    "SELECT id, deck, qno, ts, prompt, answer FROM chats WHERE deck = ? AND qno = ? ORDER BY ts ASC, id ASC",
+    [deck, qno]
+  )
+}
+
+export async function addChat(
+  deck: string, qno: number, prompt: string, answer: string,
+): Promise<ChatTurn> {
+  const db = await openDB()
+  const ts = Date.now()
+  await db.execute(
+    "INSERT INTO chats (deck, qno, ts, prompt, answer) VALUES (?, ?, ?, ?, ?)",
+    [deck, qno, ts, prompt, answer]
+  )
+  const row = await db.fetchOne<ChatTurn>(
+    "SELECT id, deck, qno, ts, prompt, answer FROM chats WHERE deck = ? AND qno = ? ORDER BY id DESC LIMIT 1",
+    [deck, qno]
+  )
+  if (row == null) {
+    return { id: 0, deck, qno, ts, prompt, answer }
+  }
+  return row
+}
+
+export async function clearChats(deck: string, qno: number): Promise<void> {
+  const db = await openDB()
+  await db.execute("DELETE FROM chats WHERE deck = ? AND qno = ?", [deck, qno])
 }

@@ -1,14 +1,19 @@
 import {
-  Button, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
-  Notification, ProgressView, RoundedRectangle, Script, ScrollView, Section, Spacer, Tab, TabView, Text,
+  Button, Dialog, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
+  Notification, ProgressView, RoundedRectangle, Script, Section, Spacer, Tab, TabView, Text,
   VStack, ZStack,
   useEffect, useMemo, useObservable, useState,
 } from "scripting"
 
-import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, seedVersion, stats, type Card, type Deck, type Stats } from "./db"
+import {
+  cardsOfDeck, countDue, dueCards, getLlmConfig, gradeCard, listDecks, openDB, resetProgress,
+  seedIfNeeded, seedVersion, setLlmApiKey, setLlmEndpoint, setLlmModel, stats,
+  type Card, type Deck, type LlmConfig, type Stats,
+  DEFAULT_LLM_ENDPOINT, DEFAULT_LLM_MODEL,
+} from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
 import { ArticleView, hasArticle, listArticles, warmArticles } from "./article"
-import { DiagView } from "./diag"
+import { AskAILink, AskAIView } from "./ask"
 
 const SESSION_LIMIT = 40
 const REMINDER_HOUR = 20
@@ -351,6 +356,9 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
           <HStack spacing={5}>
             <Text font="caption2" foregroundStyle="tertiaryLabel">← 左滑 忘了</Text>
             <Spacer />
+            <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
+              <Text font="caption2" foregroundStyle="accentColor">询问 AI</Text>
+            </NavigationLink>
             {hasArticle(card.deck, card.qno) ? (
               <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
                 <Text font="caption2" foregroundStyle="accentColor">原文</Text>
@@ -361,7 +369,7 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
           </HStack>
         </VStack>
       ) : (
-        <VStack padding={{ horizontal: 14, bottom: 6 }}>
+        <VStack spacing={8} padding={{ horizontal: 14, bottom: 6 }}>
           <Button
             title="显示答案"
             systemImage="eye"
@@ -371,6 +379,9 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
             controlSize="large"
             frame={{ maxWidth: "infinity" }}
           />
+          <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
+            <Text font="footnote" foregroundStyle="accentColor">询问 AI（默认带本题题干）</Text>
+          </NavigationLink>
         </VStack>
       )}
 
@@ -383,8 +394,8 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
 
 function CardDetail({ card }: { card: Card }) {
   return (
-    <ScrollView navigationTitle={`第 ${card.qno} 题`} navigationBarTitleDisplayMode="inline">
-      <VStack spacing={16} padding={20} alignment="leading">
+    <List navigationTitle={`第 ${card.qno} 题`} navigationBarTitleDisplayMode="inline">
+      <Section>
         <Text font="headline">{card.front}</Text>
         <Text font="body">{card.back}</Text>
         <Text font="caption" foregroundStyle="tertiaryLabel">
@@ -392,8 +403,11 @@ function CardDetail({ card }: { card: Card }) {
             ? "还没复习过"
             : `已复习 ${card.reps} 次 · 间隔 ${card.interval} 天 · 难度系数 ${card.ease.toFixed(2)}`}
         </Text>
-      </VStack>
-    </ScrollView>
+      </Section>
+      <Section>
+        <AskAILink deck={card.deck} qno={card.qno} defaultPrompt={card.front} />
+      </Section>
+    </List>
   )
 }
 
@@ -420,6 +434,11 @@ function DeckDetail({ deck }: { deck: Deck }) {
               <Label title="阅读原文" systemImage="doc.text" />
             </NavigationLink>
           ) : null}
+          <AskAILink
+            deck={deck.id}
+            qno={qno}
+            defaultPrompt={(listArticles(deck.id).find(a => a.qno === qno)?.title) ?? group[0].front}
+          />
           {group.map(card => (
             <NavigationLink destination={<CardDetail card={card} />}>
               <VStack alignment="leading" spacing={2}>
@@ -498,12 +517,64 @@ function StatRow({ label, value }: { label: string; value: string }) {
   )
 }
 
+function keyHint(key: string): string {
+  if (!key) return "未设置"
+  if (key.length <= 8) return "已设置"
+  return `已设置 ···${key.slice(key.length - 4)}`
+}
+
 function StatsTab() {
   const [s, setS] = useState<Stats | null>(null)
+  const [llm, setLlm] = useState<LlmConfig | null>(null)
   const [message, setMessage] = useState("")
 
-  async function refresh() { setS(await stats()) }
+  async function refresh() {
+    setS(await stats())
+    setLlm(await getLlmConfig())
+  }
   useEffect(() => { refresh() }, [])
+
+  async function editEndpoint() {
+    const next = await Dialog.prompt({
+      title: "API 端点",
+      message: `默认 ${DEFAULT_LLM_ENDPOINT}，可改成任意 OpenAI 兼容地址`,
+      defaultValue: llm?.endpoint ?? DEFAULT_LLM_ENDPOINT,
+      confirmLabel: "保存",
+      cancelLabel: "取消",
+    })
+    if (next == null) return
+    await setLlmEndpoint(next)
+    setLlm(await getLlmConfig())
+    setMessage("端点已保存")
+  }
+
+  async function editKey() {
+    const next = await Dialog.prompt({
+      title: "API Key",
+      message: "只存在本机，不会随脚本更新上传",
+      obscureText: true,
+      confirmLabel: "保存",
+      cancelLabel: "取消",
+    })
+    if (next == null) return
+    await setLlmApiKey(next)
+    setLlm(await getLlmConfig())
+    setMessage("Key 已保存")
+  }
+
+  async function editModel() {
+    const next = await Dialog.prompt({
+      title: "模型名",
+      message: `默认 ${DEFAULT_LLM_MODEL}`,
+      defaultValue: llm?.model ?? DEFAULT_LLM_MODEL,
+      confirmLabel: "保存",
+      cancelLabel: "取消",
+    })
+    if (next == null) return
+    await setLlmModel(next)
+    setLlm(await getLlmConfig())
+    setMessage("模型已保存")
+  }
 
   async function enableReminder() {
     await Notification.removeAllPendingsOfCurrentScript()
@@ -554,6 +625,34 @@ function StatsTab() {
         <Section header={<Text>每日提醒</Text>}>
           <Button title={`每天 ${REMINDER_HOUR}:00 提醒我`} systemImage="bell" action={enableReminder} />
           <Button title="关闭提醒" systemImage="bell.slash" action={disableReminder} />
+        </Section>
+
+        <Section
+          header={<Text>LLM 接口</Text>}
+          footer={<Text>询问 AI 默认走 SpaceXAI。Key 存在本机数据库。</Text>}
+        >
+          <HStack>
+            <Text>端点</Text>
+            <Spacer />
+            <Text font="caption" foregroundStyle="secondaryLabel" lineLimit={1}>
+              {llm?.endpoint ?? "—"}
+            </Text>
+          </HStack>
+          <HStack>
+            <Text>模型</Text>
+            <Spacer />
+            <Text font="caption" foregroundStyle="secondaryLabel">{llm?.model ?? "—"}</Text>
+          </HStack>
+          <HStack>
+            <Text>API Key</Text>
+            <Spacer />
+            <Text font="caption" foregroundStyle={llm?.apiKey ? "secondaryLabel" : "systemOrange"}>
+              {llm == null ? "—" : keyHint(llm.apiKey)}
+            </Text>
+          </HStack>
+          <Button title="设置端点" systemImage="link" action={editEndpoint} />
+          <Button title="设置 Key" systemImage="key" action={editKey} />
+          <Button title="设置模型" systemImage="cpu" action={editModel} />
         </Section>
 
         <Section
