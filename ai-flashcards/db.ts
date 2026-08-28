@@ -293,6 +293,13 @@ export async function stats(): Promise<Stats> {
   }
 }
 
+/** cards.json 已导入的版本号，用于界面上标注题库版本 */
+export async function seedVersion(): Promise<number> {
+  const db = await openDB()
+  const row = await db.fetchOne<{ v: string }>("SELECT v FROM meta WHERE k = 'seed_version'")
+  return row == null ? 0 : Number(row.v)
+}
+
 export async function resetProgress(): Promise<void> {
   const db = await openDB()
   const now = Date.now()

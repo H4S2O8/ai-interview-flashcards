@@ -13,6 +13,13 @@
 | `srs.ts` | SM-2 调度算法 |
 | `cards.json` | 卡片数据 |
 
+## 自动更新
+
+`script.json` 里配了 `remoteResource`，指向本仓库的 `ai-flashcards/` 目录，`autoUpdateInterval` 为 86400 秒
+（24 小时）。脚本会按这个间隔自己拉取更新，不用再手动导入。
+
+复习页右下角显示 `v<脚本版本> · 题库 v<cards.json 版本>`，可以据此确认手机上跑的是哪一版。
+
 ## 数据
 
 数据库在 `FileManager.appGroupDocumentsDirectory/ai-flashcards.db`，放 App Group 目录是为了让小组件

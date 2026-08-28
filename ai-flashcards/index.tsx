@@ -4,7 +4,7 @@ import {
   useEffect, useMemo, useObservable, useState,
 } from "scripting"
 
-import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, stats, type Card, type Deck, type Stats } from "./db"
+import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, seedVersion, stats, type Card, type Deck, type Stats } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
 
 const SESSION_LIMIT = 40
@@ -19,6 +19,22 @@ const SWIPE_THRESHOLD = 100
 /** 左滑给「忘了」，右滑给「良好」——上下滑没有绑定，见下方注释 */
 const SWIPE_LEFT_GRADE: Grade = 0
 const SWIPE_RIGHT_GRADE: Grade = 2
+
+/** 右下角的版本角标：脚本版本取自 script.json，题库版本取自已导入的 cards.json */
+function VersionBadge() {
+  const [seed, setSeed] = useState<number | null>(null)
+  useEffect(() => { seedVersion().then(setSeed) }, [])
+
+  const app = Script.metadata?.version ?? "?"
+  return (
+    <HStack padding={{ horizontal: 16, bottom: 4 }}>
+      <Spacer />
+      <Text font="caption2" foregroundStyle="tertiaryLabel">
+        v{app}{seed != null ? ` · 题库 v${seed}` : ""}
+      </Text>
+    </HStack>
+  )
+}
 
 function ReviewTab() {
   const [queue, setQueue] = useState<Card[] | null>(null)
@@ -72,6 +88,8 @@ function ReviewTab() {
           到期的卡片会自动排进队列，明天再来
         </Text>
         <Button title="再查一次" systemImage="arrow.clockwise" action={load} buttonStyle="bordered" />
+        <Spacer />
+        <VersionBadge />
       </VStack>
     )
   }
@@ -177,6 +195,7 @@ function ReviewTab() {
           frame={{ maxWidth: "infinity" }}
         />
       )}
+      <VersionBadge />
     </VStack>
   )
 }

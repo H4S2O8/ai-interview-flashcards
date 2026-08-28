@@ -5,10 +5,14 @@
   },
   "icon": "rectangle.on.rectangle.angled",
   "color": "#5E5CE6",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "runInApp": true,
   "description": "Spaced-repetition flashcards for LLM / Agent interview prep.",
   "localizedDescriptions": {
     "zh": "大模型 / Agent 面试题的间隔重复闪卡。"
+  },
+  "remoteResource": {
+    "url": "https://github.com/H4S2O8/ai-interview-flashcards/tree/master/ai-flashcards",
+    "autoUpdateInterval": 86400
   }
 }
