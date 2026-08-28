@@ -7,6 +7,7 @@ import {
 
 import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, seedVersion, stats, type Card, type Deck, type Stats } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
+import { DiagView } from "./diag"
 
 const SESSION_LIMIT = 40
 const REMINDER_HOUR = 20
@@ -481,6 +482,9 @@ function Root() {
       </Tab>
       <Tab title="统计" systemImage="chart.bar" value={2}>
         <StatsTab />
+      </Tab>
+      <Tab title="诊断" systemImage="stethoscope" value={3}>
+        <NavigationStack><DiagView /></NavigationStack>
       </Tab>
     </TabView>
   )
