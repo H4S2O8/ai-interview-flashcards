@@ -1,0 +1,14 @@
+{
+  "name": "AI Flashcards",
+  "localizedNames": {
+    "zh": "AI 面试闪卡"
+  },
+  "icon": "rectangle.on.rectangle.angled",
+  "color": "#5E5CE6",
+  "version": "1.0.0",
+  "runInApp": true,
+  "description": "Spaced-repetition flashcards for LLM / Agent interview prep.",
+  "localizedDescriptions": {
+    "zh": "大模型 / Agent 面试题的间隔重复闪卡。"
+  }
+}
