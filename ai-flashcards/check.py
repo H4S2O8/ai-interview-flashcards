@@ -39,6 +39,10 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
     else:
         print(f"✓ {f}: {len(used)} 个组件全部有来源")
 
+    # 扫描高危写法前先剥掉注释，否则注释里提到某个 API 也会被误报
+    code = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
+    code = re.sub(r'//[^\n]*', '', code)
+
     # 文档里查不到用例的写法，用一次踩一次坑，直接列黑名单
     RISKY = [
         (r'<RoundedRectangle[^>]*padding=', "RoundedRectangle 直接带 padding（文档无用例，请套一层 HStack）"),
@@ -46,9 +50,11 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
         (r'<ProgressView[^>]*padding=',     "ProgressView 直接带 padding（文档无用例，请套一层 HStack）"),
         (r'<(VStack|HStack|ZStack)[^>]*shadow=', "容器上用 shadow（文档唯一用例在 Text 上）"),
         (r'set[A-Z]\w*\(\s*\w+\s*=>', "函数式 setState（文档只出现过 setX(x + 1)，此框架未必支持）"),
+        (r'DragGesture\s*\(', "DragGesture() 链式构造（文档零用例，实测卡片完全不动；请用 onDragGesture 属性形式）"),
+        (r'(simultaneous|highPriority)Gesture=', "simultaneous/highPriorityGesture（文档只有 Tap/LongPress 用例，配 DragGesture 实测失效）"),
     ]
     for pat, why in RISKY:
-        if re.search(pat, src, re.S):
+        if re.search(pat, code, re.S):
             fail += 1
             print(f"✗ {f}: {why}")
 

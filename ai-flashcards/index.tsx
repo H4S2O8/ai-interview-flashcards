@@ -1,5 +1,5 @@
 import {
-  Button, DragGesture, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
+  Button, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
   Notification, ProgressView, RoundedRectangle, Script, ScrollView, Section, Spacer, Tab, TabView, Text,
   VStack, ZStack,
   useEffect, useMemo, useObservable, useState,
@@ -87,29 +87,30 @@ function SwipeCard({
         animation: Animation.spring({ duration: 0.28, bounce: 0.16 }),
         value: `${phase}:${tick.value}`,
       }}
-      // 用 simultaneousGesture 而不是 onDragGesture：
-      // 卡片里有 ScrollView，两者会抢手势，仲裁延迟就是「不跟手」。
-      // 同时识别 + 自己做方向锁，横滑归卡片、纵滑归滚动。
-      simultaneousGesture={
-        DragGesture()
-          .onChanged(d => {
-            if (phase !== "idle") return
-            const dx = d.translation.width
-            const dy = d.translation.height
-            if (axis.lock === 0) {
-              if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return   // 死区尽量小
-              axis.lock = Math.abs(dx) > Math.abs(dy) ? 1 : -1
-            }
-            if (axis.lock !== 1) return
-            dragX.setValue(dx)
-          })
-          .onEnded(d => {
-            const locked = axis.lock
-            axis.lock = 0
-            if (locked !== 1) return
-            onSwipeEnd(d.predictedEndTranslation.width)
-          })
-      }
+      // 用 onDragGesture 属性形式。曾经换成 simultaneousGesture + DragGesture()，
+      // 结果卡片完全不动 —— DragGesture() 的链式构造在文档里没有任何实际用例，
+      // 属性形式才是被验证过能工作的那个。
+      // 方向锁自己做：前几点判主方向，横滑归卡片、纵滑放行给 ScrollView。
+      onDragGesture={{
+        minDistance: 6,
+        onChanged: d => {
+          if (phase !== "idle") return
+          const dx = d.translation.width
+          const dy = d.translation.height
+          if (axis.lock === 0) {
+            if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return
+            axis.lock = Math.abs(dx) > Math.abs(dy) ? 1 : -1
+          }
+          if (axis.lock !== 1) return
+          dragX.setValue(dx)
+        },
+        onEnded: d => {
+          const locked = axis.lock
+          axis.lock = 0
+          if (locked !== 1) { dragX.setValue(0); return }
+          onSwipeEnd(d.predictedEndTranslation.width)
+        },
+      }}
       overlay={
         {
           alignment: swipingRight ? "topLeading" : "topTrailing",
