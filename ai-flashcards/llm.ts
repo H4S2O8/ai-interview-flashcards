@@ -1,7 +1,7 @@
 import { getLlmConfig, type ChatTurn, type LlmConfig } from "./db"
 
 const SYSTEM_PROMPT =
-  "你是面试辅导助手。用户会给出一道面试题或知识点。你必须直接、完整地回答这个问题，不要拒绝，不要只复述题目，不要只给提纲。用中文作答；概念先给结论，再补容易被追问的细节。"
+  "你是面试辅导助手。用户会给出一道面试题或知识点。你必须直接、完整地回答这个问题，不要拒绝，不要只复述题目，不要只给提纲。用中文作答；概念先给结论，再补容易被追问的细节。用 Markdown 排版：标题、列表、加粗、代码块。"
 
 const HISTORY_LIMIT = 10
 const TIMEOUT_SEC = 120

@@ -1,5 +1,5 @@
 import {
-  Button, Label, List, NavigationLink, ProgressView, Section, SecureField, Text, TextField, VStack,
+  Button, Label, List, Markdown, NavigationLink, ProgressView, Section, SecureField, Text, TextField, VStack,
   useEffect, useState,
 } from "scripting"
 
@@ -149,7 +149,9 @@ export function AskAIView({
 
       {busy || draft ? (
         <Section header={<Text>{busy ? "回答中" : "刚才的回答"}</Text>}>
-          <Text font="body">{draft || "等待第一个字…"}</Text>
+          {draft
+            ? <Markdown content={draft} />
+            : <Text font="footnote" foregroundStyle="secondaryLabel">等待第一个字…</Text>}
         </Section>
       ) : null}
 
@@ -172,7 +174,7 @@ export function AskAIView({
             <VStack alignment="leading" spacing={6} padding={{ vertical: 4 }}>
               <Text font="caption2" foregroundStyle="tertiaryLabel">{formatTime(t.ts)}</Text>
               <Text font="subheadline" fontWeight="semibold">{t.prompt}</Text>
-              <Text font="body">{t.answer}</Text>
+              <Markdown content={t.answer} />
             </VStack>
           ))
         )}

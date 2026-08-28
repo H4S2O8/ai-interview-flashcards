@@ -67,7 +67,7 @@
 
 接口在「统计 → LLM 接口」里直接填输入框，点「保存接口配置」。询问页底部同样有这三项。主界面已经全屏 present，不能再用 `Dialog.prompt`（会静默失败）。
 
-询问走 **OpenAI 兼容 Chat Completions**，`stream: true`，按 SSE 边收边显示。
+询问走 **OpenAI 兼容 Chat Completions**，`stream: true`，按 SSE 边收边显示，回答用 Scripting 的 `Markdown` 组件渲染。
 
 | 项 | 默认 |
 | --- | --- |
