@@ -1,11 +1,11 @@
 import {
-  Button, Dialog, HStack, Label, List, NavigationLink, ProgressView, Section, Spacer, Text, VStack,
+  Button, Label, List, NavigationLink, ProgressView, Section, SecureField, Text, TextField, VStack,
   useEffect, useState,
 } from "scripting"
 
 import {
   addChat, clearChats, getLlmConfig, listChats, setLlmApiKey, setLlmEndpoint, setLlmModel,
-  type ChatTurn, type LlmConfig,
+  type ChatTurn,
   DEFAULT_LLM_ENDPOINT, DEFAULT_LLM_MODEL,
 } from "./db"
 import { askLlm } from "./llm"
@@ -16,20 +16,49 @@ function formatTime(ts: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function keyHint(key: string): string {
-  if (!key) return "未设置"
-  if (key.length <= 8) return "已设置"
-  return `已设置 ···${key.slice(key.length - 4)}`
-}
+/**
+ * 端点 / Key / 模型直接用 TextField 填。
+ * 不能用 Dialog.prompt：主界面已经 Navigation.present 全屏，再弹一层会静默失败（点了没反应）。
+ * 写法对齐 Scripting 作者示例：title + value + onChanged。
+ */
+export function LlmSettingsBlock() {
+  const [endpoint, setEndpoint] = useState(DEFAULT_LLM_ENDPOINT)
+  const [apiKey, setApiKey] = useState("")
+  const [model, setModel] = useState(DEFAULT_LLM_MODEL)
+  const [message, setMessage] = useState("")
 
-async function promptField(title: string, current: string, obscure: boolean): Promise<string | null> {
-  return Dialog.prompt({
-    title,
-    defaultValue: current,
-    obscureText: obscure,
-    confirmLabel: "保存",
-    cancelLabel: "取消",
-  })
+  useEffect(() => {
+    getLlmConfig().then(c => {
+      setEndpoint(c.endpoint)
+      setApiKey(c.apiKey)
+      setModel(c.model)
+    })
+  }, [])
+
+  async function save() {
+    await setLlmEndpoint(endpoint)
+    await setLlmApiKey(apiKey)
+    await setLlmModel(model)
+    setMessage("已保存到本机")
+  }
+
+  return (
+    <Section
+      header={<Text>LLM 接口</Text>}
+      footer={
+        <Text>
+          {message
+            ? message
+            : "在输入框里改完点保存。默认 SpaceXAI（https://api.x.ai/v1，grok-4.5）。Key 只留本机。"}
+        </Text>
+      }
+    >
+      <TextField title="端点" value={endpoint} onChanged={setEndpoint} />
+      <SecureField title="API Key" value={apiKey} onChanged={setApiKey} />
+      <TextField title="模型" value={model} onChanged={setModel} />
+      <Button title="保存接口配置" systemImage="checkmark.circle" action={save} />
+    </Section>
+  )
 }
 
 export function AskAIView({
@@ -41,49 +70,37 @@ export function AskAIView({
 }) {
   const [prompt, setPrompt] = useState(defaultPrompt)
   const [items, setItems] = useState<ChatTurn[] | null>(null)
-  const [cfg, setCfg] = useState<LlmConfig | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [note, setNote] = useState("")
+  const [confirmWipe, setConfirmWipe] = useState(false)
 
   async function reload() {
     setItems(await listChats(deck, qno))
-    setCfg(await getLlmConfig())
   }
 
   useEffect(() => { reload() }, [deck, qno])
 
-  async function editPrompt() {
-    const next = await promptField("编辑问题", prompt, false)
-    if (next == null) return
-    const t = next.trim()
-    if (!t) {
-      await Dialog.alert({ title: "问题不能为空", message: "默认会带上本题题干，请填入要问的内容。" })
-      return
-    }
-    setPrompt(t)
-  }
-
   async function send() {
     const text = prompt.trim()
     if (!text) {
-      await Dialog.alert({ title: "问题不能为空", message: "请先编辑问题。" })
-      return
-    }
-    if (cfg != null && !cfg.apiKey) {
-      await Dialog.alert({ title: "还没配置 API Key", message: "先在下方或「统计」页填入端点和 Key。" })
+      setError("问题不能为空，默认会带上本题题干。")
       return
     }
     if (busy || items == null) return
+    const live = await getLlmConfig()
+    if (!live.apiKey) {
+      setError("还没配置 API Key，请在下方填写并点「保存接口配置」。")
+      return
+    }
     setBusy(true)
     setError("")
     setNote("")
     try {
-      const history = items ?? []
+      const history = items
       const answer = await askLlm(text, history)
       const saved = await addChat(deck, qno, text, answer)
-      const next = history.concat([saved])
-      setItems(next)
+      setItems(history.concat([saved]))
       setNote("已保存到本题记录")
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "询问失败")
@@ -92,64 +109,33 @@ export function AskAIView({
   }
 
   async function wipe() {
-    const ok = await Dialog.confirm({
-      title: "清空本题问答",
-      message: "只删这一道题的记录，不影响复习进度和其他题。",
-      confirmLabel: "清空",
-      cancelLabel: "取消",
-    })
-    if (!ok) return
+    if (!confirmWipe) {
+      setConfirmWipe(true)
+      return
+    }
     await clearChats(deck, qno)
     setItems([])
+    setConfirmWipe(false)
     setNote("本题记录已清空")
   }
-
-  async function editEndpoint() {
-    const cur = cfg?.endpoint ?? DEFAULT_LLM_ENDPOINT
-    const next = await promptField("API 端点", cur, false)
-    if (next == null) return
-    await setLlmEndpoint(next)
-    setCfg(await getLlmConfig())
-    setNote("端点已保存")
-  }
-
-  async function editKey() {
-    const next = await promptField("API Key", "", true)
-    if (next == null) return
-    await setLlmApiKey(next)
-    setCfg(await getLlmConfig())
-    setNote("Key 已保存，只留在本机")
-  }
-
-  async function editModel() {
-    const cur = cfg?.model ?? DEFAULT_LLM_MODEL
-    const next = await promptField("模型名", cur, false)
-    if (next == null) return
-    await setLlmModel(next)
-    setCfg(await getLlmConfig())
-    setNote("模型已保存")
-  }
-
-  const ready = cfg != null && cfg.apiKey.length > 0
 
   return (
     <List navigationTitle={`第 ${qno} 题 · 询问 AI`} navigationBarTitleDisplayMode="inline">
       <Section
         header={<Text>提问</Text>}
-        footer={<Text>默认带上本题题干，可改成追问。回答会按「题」保存，同一题的卡片共享记录。</Text>}
+        footer={<Text>默认带上本题题干，可改成追问。回答按「题」保存，同一题的卡片共享记录。</Text>}
       >
-        <Text font="body">{prompt}</Text>
-        <Button title="编辑问题" systemImage="pencil" action={editPrompt} />
+        <TextField title="问题" value={prompt} onChanged={setPrompt} />
         <Button
           title={busy ? "正在询问…" : "询问并保存"}
           systemImage="paperplane"
           action={send}
         />
         {busy ? (
-          <HStack>
+          <VStack>
             <ProgressView progressViewStyle="circular" />
             <Text font="footnote" foregroundStyle="secondaryLabel">等待模型回答</Text>
-          </HStack>
+          </VStack>
         ) : null}
       </Section>
 
@@ -177,37 +163,16 @@ export function AskAIView({
           ))
         )}
         {items != null && items.length > 0 ? (
-          <Button title="清空本题记录" systemImage="trash" role="destructive" action={wipe} />
+          <Button
+            title={confirmWipe ? "再点一次确认清空" : "清空本题记录"}
+            systemImage="trash"
+            role="destructive"
+            action={wipe}
+          />
         ) : null}
       </Section>
 
-      <Section
-        header={<Text>LLM 接口</Text>}
-        footer={<Text>默认指向 SpaceXAI（https://api.x.ai/v1，模型 grok-4.5）。也可改成任意 OpenAI 兼容端点。Key 存在本机数据库，不会随脚本更新上传。</Text>}
-      >
-        <HStack>
-          <Text>端点</Text>
-          <Spacer />
-          <Text font="caption" foregroundStyle="secondaryLabel" lineLimit={1}>
-            {cfg?.endpoint ?? "—"}
-          </Text>
-        </HStack>
-        <HStack>
-          <Text>模型</Text>
-          <Spacer />
-          <Text font="caption" foregroundStyle="secondaryLabel">{cfg?.model ?? "—"}</Text>
-        </HStack>
-        <HStack>
-          <Text>API Key</Text>
-          <Spacer />
-          <Text font="caption" foregroundStyle={ready ? "secondaryLabel" : "systemOrange"}>
-            {cfg == null ? "—" : keyHint(cfg.apiKey)}
-          </Text>
-        </HStack>
-        <Button title="设置端点" systemImage="link" action={editEndpoint} />
-        <Button title="设置 Key" systemImage="key" action={editKey} />
-        <Button title="设置模型" systemImage="cpu" action={editModel} />
-      </Section>
+      <LlmSettingsBlock />
     </List>
   )
 }

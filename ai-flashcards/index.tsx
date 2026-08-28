@@ -1,19 +1,18 @@
 import {
-  Button, Dialog, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
+  Button, HStack, Label, List, Navigation, NavigationLink, NavigationStack,
   Notification, ProgressView, RoundedRectangle, Script, Section, Spacer, Tab, TabView, Text,
   VStack, ZStack,
   useEffect, useMemo, useObservable, useState,
 } from "scripting"
 
 import {
-  cardsOfDeck, countDue, dueCards, getLlmConfig, gradeCard, listDecks, openDB, resetProgress,
-  seedIfNeeded, seedVersion, setLlmApiKey, setLlmEndpoint, setLlmModel, stats,
-  type Card, type Deck, type LlmConfig, type Stats,
-  DEFAULT_LLM_ENDPOINT, DEFAULT_LLM_MODEL,
+  cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress,
+  seedIfNeeded, seedVersion, stats,
+  type Card, type Deck, type Stats,
 } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
 import { ArticleView, hasArticle, listArticles, warmArticles } from "./article"
-import { AskAILink, AskAIView } from "./ask"
+import { AskAILink, AskAIView, LlmSettingsBlock } from "./ask"
 
 const SESSION_LIMIT = 40
 const REMINDER_HOUR = 20
@@ -517,64 +516,12 @@ function StatRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function keyHint(key: string): string {
-  if (!key) return "未设置"
-  if (key.length <= 8) return "已设置"
-  return `已设置 ···${key.slice(key.length - 4)}`
-}
-
 function StatsTab() {
   const [s, setS] = useState<Stats | null>(null)
-  const [llm, setLlm] = useState<LlmConfig | null>(null)
   const [message, setMessage] = useState("")
 
-  async function refresh() {
-    setS(await stats())
-    setLlm(await getLlmConfig())
-  }
+  async function refresh() { setS(await stats()) }
   useEffect(() => { refresh() }, [])
-
-  async function editEndpoint() {
-    const next = await Dialog.prompt({
-      title: "API 端点",
-      message: `默认 ${DEFAULT_LLM_ENDPOINT}，可改成任意 OpenAI 兼容地址`,
-      defaultValue: llm?.endpoint ?? DEFAULT_LLM_ENDPOINT,
-      confirmLabel: "保存",
-      cancelLabel: "取消",
-    })
-    if (next == null) return
-    await setLlmEndpoint(next)
-    setLlm(await getLlmConfig())
-    setMessage("端点已保存")
-  }
-
-  async function editKey() {
-    const next = await Dialog.prompt({
-      title: "API Key",
-      message: "只存在本机，不会随脚本更新上传",
-      obscureText: true,
-      confirmLabel: "保存",
-      cancelLabel: "取消",
-    })
-    if (next == null) return
-    await setLlmApiKey(next)
-    setLlm(await getLlmConfig())
-    setMessage("Key 已保存")
-  }
-
-  async function editModel() {
-    const next = await Dialog.prompt({
-      title: "模型名",
-      message: `默认 ${DEFAULT_LLM_MODEL}`,
-      defaultValue: llm?.model ?? DEFAULT_LLM_MODEL,
-      confirmLabel: "保存",
-      cancelLabel: "取消",
-    })
-    if (next == null) return
-    await setLlmModel(next)
-    setLlm(await getLlmConfig())
-    setMessage("模型已保存")
-  }
 
   async function enableReminder() {
     await Notification.removeAllPendingsOfCurrentScript()
@@ -627,33 +574,7 @@ function StatsTab() {
           <Button title="关闭提醒" systemImage="bell.slash" action={disableReminder} />
         </Section>
 
-        <Section
-          header={<Text>LLM 接口</Text>}
-          footer={<Text>询问 AI 默认走 SpaceXAI。Key 存在本机数据库。</Text>}
-        >
-          <HStack>
-            <Text>端点</Text>
-            <Spacer />
-            <Text font="caption" foregroundStyle="secondaryLabel" lineLimit={1}>
-              {llm?.endpoint ?? "—"}
-            </Text>
-          </HStack>
-          <HStack>
-            <Text>模型</Text>
-            <Spacer />
-            <Text font="caption" foregroundStyle="secondaryLabel">{llm?.model ?? "—"}</Text>
-          </HStack>
-          <HStack>
-            <Text>API Key</Text>
-            <Spacer />
-            <Text font="caption" foregroundStyle={llm?.apiKey ? "secondaryLabel" : "systemOrange"}>
-              {llm == null ? "—" : keyHint(llm.apiKey)}
-            </Text>
-          </HStack>
-          <Button title="设置端点" systemImage="link" action={editEndpoint} />
-          <Button title="设置 Key" systemImage="key" action={editKey} />
-          <Button title="设置模型" systemImage="cpu" action={editModel} />
-        </Section>
+        <LlmSettingsBlock />
 
         <Section
           header={<Text>维护</Text>}
