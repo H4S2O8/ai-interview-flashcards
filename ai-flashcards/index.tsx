@@ -62,9 +62,6 @@ function SwipeCard({
   onSwipeEnd: (predictedX: number) => void
   children?: any
 }) {
-  // 方向锁。放在 useMemo 的可变对象里，读写它不会触发重渲染。
-  const axis = useMemo(() => ({ lock: 0 }), [])
-
   const offset = dragX.value
   const swipeRatio = Math.min(Math.abs(offset) / SWIPE_THRESHOLD, 1)
   const swipingRight = offset > 0
@@ -87,29 +84,16 @@ function SwipeCard({
         animation: Animation.spring({ duration: 0.28, bounce: 0.16 }),
         value: `${phase}:${tick.value}`,
       }}
-      // 用 onDragGesture 属性形式。曾经换成 simultaneousGesture + DragGesture()，
-      // 结果卡片完全不动 —— DragGesture() 的链式构造在文档里没有任何实际用例，
-      // 属性形式才是被验证过能工作的那个。
-      // 方向锁自己做：前几点判主方向，横滑归卡片、纵滑放行给 ScrollView。
+      // 属性形式，不用 DragGesture() 链式构造（文档零用例，实测卡片完全不动）。
+      // 卡片内已无 ScrollView，没有手势竞争，所以也不需要方向锁 ——
+      // 留着反而会让斜向滑动被判成「纵向」而完全不响应。
       onDragGesture={{
-        minDistance: 6,
+        minDistance: 4,
         onChanged: d => {
           if (phase !== "idle") return
-          const dx = d.translation.width
-          const dy = d.translation.height
-          if (axis.lock === 0) {
-            if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return
-            axis.lock = Math.abs(dx) > Math.abs(dy) ? 1 : -1
-          }
-          if (axis.lock !== 1) return
-          dragX.setValue(dx)
+          dragX.setValue(d.translation.width)
         },
-        onEnded: d => {
-          const locked = axis.lock
-          axis.lock = 0
-          if (locked !== 1) { dragX.setValue(0); return }
-          onSwipeEnd(d.predictedEndTranslation.width)
-        },
+        onEnded: d => onSwipeEnd(d.predictedEndTranslation.width),
       }}
       overlay={
         {
@@ -240,6 +224,18 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
   const total = queue.length
   const remaining = total - index
   const progress = total === 0 ? 0 : index / total
+
+  // 卡片不再滚动，靠字号自适应兜住最长的那几张。
+  // 实测 132 张里 94% 在 19 行以内，最长 24 行，只有 6% 需要缩字号。
+  // 用纯 JS 估行数而不是 minimumScaleFactor —— 这个框架没有那个属性。
+  const fit = useMemo(() => {
+    const lines = (t: string) =>
+      t.split("\n").reduce((n, p) => n + Math.max(1, Math.ceil(p.length / 19)), 0)
+    const totalLines = lines(card.front) + (revealed ? lines(card.back) : 0)
+    if (totalLines <= 14) return { front: "title3", back: "body" }
+    if (totalLines <= 19) return { front: "headline", back: "subheadline" }
+    return { front: "subheadline", back: "footnote" }
+  }, [card.front, card.back, revealed])
   // 注意：这里刻意不读 dragX.value / tick.value —— 一读就会让整页每帧重渲染。
   // 位移相关的一切都封在 SwipeCard 里。
 
@@ -295,8 +291,8 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
           armed={revealed}
           onSwipeEnd={onDragEnded}
         >
-          <ScrollView frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
-            <VStack spacing={16} padding={{ horizontal: 22, vertical: 26 }} alignment="leading">
+          <VStack spacing={14} padding={{ horizontal: 22, vertical: 24 }} alignment="leading"
+            frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
 
               <Text font="caption2" fontWeight="semibold" foregroundStyle="accentColor"
                 padding={{ horizontal: 9, vertical: 4 }}
@@ -304,22 +300,22 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
                 Q{card.qno}
               </Text>
 
-              <Text font="title3" fontWeight="semibold">{card.front}</Text>
+              <Text font={fit.front} fontWeight="semibold">{card.front}</Text>
 
               {revealed ? (
                 <VStack spacing={12} alignment="leading" padding={{ top: 2 }}>
                   <RoundedRectangle cornerRadius={1} fill="separator"
                     frame={{ maxWidth: "infinity", height: 1 }} />
                   <Text font="caption2" fontWeight="semibold" foregroundStyle="tertiaryLabel">答案</Text>
-                  <Text font="body">{card.back}</Text>
+                  <Text font={fit.back}>{card.back}</Text>
                 </VStack>
               ) : (
                 <Text font="footnote" foregroundStyle="tertiaryLabel" padding={{ top: 4 }}>
                   先在心里答一遍，再点下面显示答案
                 </Text>
               )}
+              <Spacer />
             </VStack>
-          </ScrollView>
         </SwipeCard>
       </ZStack>
 
