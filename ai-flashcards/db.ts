@@ -89,6 +89,19 @@ async function migrate(db: DB) {
     CREATE INDEX IF NOT EXISTS idx_reviews_ts ON reviews(ts);
     CREATE INDEX IF NOT EXISTS idx_chats_q    ON chats(deck, qno, ts);
   `)
+  // 单独再跑一遍：老库升级时，整段 execute 有的实现只会跑第一条，chats 表就建不出来，
+  // 询问页会一直停在「载入中」，点询问也没反应。
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS chats (
+      id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      deck   TEXT    NOT NULL,
+      qno    INTEGER NOT NULL,
+      ts     INTEGER NOT NULL,
+      prompt TEXT    NOT NULL,
+      answer TEXT    NOT NULL
+    )
+  `)
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_chats_q ON chats(deck, qno, ts)")
 }
 
 /**

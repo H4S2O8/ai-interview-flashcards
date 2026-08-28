@@ -49,7 +49,7 @@ export function LlmSettingsBlock() {
         <Text>
           {message
             ? message
-            : "在输入框里改完点保存。默认 SpaceXAI（https://api.x.ai/v1，grok-4.5）。Key 只留本机。"}
+            : "在输入框里改完点保存。端点填 OpenAI 兼容 base，例如 https://api.openai.com/v1 或 https://api.x.ai/v1。会走 /chat/completions 流式。"}
         </Text>
       }
     >
@@ -71,12 +71,18 @@ export function AskAIView({
   const [prompt, setPrompt] = useState(defaultPrompt)
   const [items, setItems] = useState<ChatTurn[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [draft, setDraft] = useState("")
   const [error, setError] = useState("")
   const [note, setNote] = useState("")
   const [confirmWipe, setConfirmWipe] = useState(false)
 
   async function reload() {
-    setItems(await listChats(deck, qno))
+    try {
+      setItems(await listChats(deck, qno))
+    } catch {
+      setItems([])
+      setError("读取问答记录失败，仍可以询问（本次不带历史）。")
+    }
   }
 
   useEffect(() => { reload() }, [deck, qno])
@@ -87,7 +93,7 @@ export function AskAIView({
       setError("问题不能为空，默认会带上本题题干。")
       return
     }
-    if (busy || items == null) return
+    if (busy) return
     const live = await getLlmConfig()
     if (!live.apiKey) {
       setError("还没配置 API Key，请在下方填写并点「保存接口配置」。")
@@ -96,11 +102,13 @@ export function AskAIView({
     setBusy(true)
     setError("")
     setNote("")
+    setDraft("")
     try {
-      const history = items
-      const answer = await askLlm(text, history)
+      const history = items ?? []
+      const answer = await askLlm(text, history, (full) => { setDraft(full) })
       const saved = await addChat(deck, qno, text, answer)
       setItems(history.concat([saved]))
+      setDraft("")
       setNote("已保存到本题记录")
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "询问失败")
@@ -134,10 +142,16 @@ export function AskAIView({
         {busy ? (
           <VStack>
             <ProgressView progressViewStyle="circular" />
-            <Text font="footnote" foregroundStyle="secondaryLabel">等待模型回答</Text>
+            <Text font="footnote" foregroundStyle="secondaryLabel">正在流式接收…</Text>
           </VStack>
         ) : null}
       </Section>
+
+      {busy || draft ? (
+        <Section header={<Text>{busy ? "回答中" : "刚才的回答"}</Text>}>
+          <Text font="body">{draft || "等待第一个字…"}</Text>
+        </Section>
+      ) : null}
 
       {error ? (
         <Section header={<Text>出错</Text>}>

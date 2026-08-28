@@ -67,13 +67,15 @@
 
 接口在「统计 → LLM 接口」里直接填输入框，点「保存接口配置」。询问页底部同样有这三项。主界面已经全屏 present，不能再用 `Dialog.prompt`（会静默失败）。
 
+询问走 **OpenAI 兼容 Chat Completions**，`stream: true`，按 SSE 边收边显示。
+
 | 项 | 默认 |
 | --- | --- |
 | 端点 | `https://api.x.ai/v1`（SpaceXAI，OpenAI 兼容） |
 | 模型 | `grok-4.5` |
 | Key | 空，需自行填写 |
 
-端点可改成任意 OpenAI 兼容地址（会补 `/chat/completions`；若已写到 `/chat/completions` 或 `/responses` 则原样使用）。Key 存在本机 `meta` 表，不随脚本更新上传。
+端点填 base URL 即可，例如 `https://api.openai.com/v1`、`https://api.x.ai/v1`，或完整 `…/v1/chat/completions`。只填主机名时会补 `/v1/chat/completions`。Key 存在本机 `meta` 表，不随脚本更新上传。
 
 ## 原文对照
 

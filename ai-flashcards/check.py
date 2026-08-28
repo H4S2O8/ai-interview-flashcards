@@ -10,6 +10,7 @@ GLOBALS = {
     "Data","console","JSON","Math","Date","Number","String","Object","Array",
     "Promise","Set","Map","setTimeout","clearTimeout","setInterval","clearInterval",
     "LanguageModelSession","Crypto","UUID","fetch","Response","Headers",
+    "AbortController","AbortSignal","TextDecoder","URL","Symbol",
 }
 
 fail = 0
