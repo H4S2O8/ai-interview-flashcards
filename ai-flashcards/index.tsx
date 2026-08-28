@@ -563,7 +563,14 @@ function Root() {
 async function main() {
   await openDB()
   await seedIfNeeded()
-  warmArticles()   // 提前解析原文数据，别让它卡在翻卡那一刻
+  // 原文是可选资源，它出任何问题都不该挡住 UI。
+  // 曾经因为 article.tsx 漏 import Path，这里抛异常导致
+  // Navigation.present 永远没被调用 —— 脚本在跑，前台却一片空白。
+  try {
+    warmArticles()   // 提前解析原文数据，别让它卡在翻卡那一刻
+  } catch (e) {
+    console.error("原文预热失败，忽略：", e)
+  }
   // 默认是 pageSheet（抽屉），下滑即关闭 —— 复习页本身就要纵向滚动，很容易误关。
   // 改成全屏呈现；代价是没有了下滑关闭，所以 Root 里必须自带关闭按钮。
   await Navigation.present({

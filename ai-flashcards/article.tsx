@@ -1,5 +1,5 @@
 import {
-  HStack, Link, RoundedRectangle, Script, ScrollView, Spacer, Text, VStack,
+  HStack, Link, Path, RoundedRectangle, Script, ScrollView, Spacer, Text, VStack,
   useEffect, useState,
 } from "scripting"
 

@@ -58,6 +58,16 @@ for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob
             fail += 1
             print(f"✗ {f}: {why}")
 
+    # 必须从 "scripting" 导入的模块对象。文档的 import 语句里出现过它们，
+    # 而 FileManager / SQLite / Animation / DateComponents 等是真全局、不用导入。
+    # 漏导入不会有语法错，只在运行到那一行时抛 ReferenceError ——
+    # 若发生在 Navigation.present 之前，表现为「脚本在跑但前台一片空白」。
+    MUST_IMPORT = ["Path", "Script", "Navigation", "Notification", "Widget"]
+    for name in MUST_IMPORT:
+        if re.search(r'\b' + name + r'\.', code) and name not in imported:
+            fail += 1
+            print(f"✗ {f}: 用了 {name}.* 但没有从 \"scripting\" 导入 {name}")
+
     # Hooks 规则：hook 不能出现在提前 return 之后。
     # 首次渲染若走了提前 return，该 hook 不会执行；后续渲染执行到它时
     # hook 数量对不上，渲染直接失败（症状：界面卡在上一次成功渲染的状态）。
