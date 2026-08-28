@@ -3,6 +3,8 @@
 跑在 [Scripting](https://apps.apple.com/app/apple-store/id6479691128) 上的间隔重复闪卡，题库来自
 [小林面试笔记的大模型面试题](https://xiaolinnote.com/ai/)。
 
+当前收录 Agent 面试专题 16 道题，132 张卡片（平均每题 8.2 张），逐篇通读原文正文提炼而成。
+
 ## 文件
 
 | 文件 | 作用 |
