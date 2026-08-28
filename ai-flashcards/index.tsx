@@ -7,6 +7,7 @@ import {
 
 import { cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress, seedIfNeeded, seedVersion, stats, type Card, type Deck, type Stats } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
+import { ArticleView, hasArticle, warmArticles } from "./article"
 import { DiagView } from "./diag"
 
 const SESSION_LIMIT = 40
@@ -350,6 +351,12 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
           <HStack spacing={5}>
             <Text font="caption2" foregroundStyle="tertiaryLabel">← 左滑 忘了</Text>
             <Spacer />
+            {hasArticle(card.deck, card.qno) ? (
+              <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
+                <Text font="caption2" foregroundStyle="accentColor">原文</Text>
+              </NavigationLink>
+            ) : null}
+            <Spacer />
             <Text font="caption2" foregroundStyle="tertiaryLabel">右滑 良好 →</Text>
           </HStack>
         </VStack>
@@ -385,6 +392,11 @@ function CardDetail({ card }: { card: Card }) {
             ? "还没复习过"
             : `已复习 ${card.reps} 次 · 间隔 ${card.interval} 天 · 难度系数 ${card.ease.toFixed(2)}`}
         </Text>
+        {hasArticle(card.deck, card.qno) ? (
+          <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
+            <Label title="阅读这道题的原文" systemImage="doc.text" />
+          </NavigationLink>
+        ) : null}
       </VStack>
     </ScrollView>
   )
@@ -551,6 +563,7 @@ function Root() {
 async function main() {
   await openDB()
   await seedIfNeeded()
+  warmArticles()   // 提前解析原文数据，别让它卡在翻卡那一刻
   // 默认是 pageSheet（抽屉），下滑即关闭 —— 复习页本身就要纵向滚动，很容易误关。
   // 改成全屏呈现；代价是没有了下滑关闭，所以 Root 里必须自带关闭按钮。
   await Navigation.present({
