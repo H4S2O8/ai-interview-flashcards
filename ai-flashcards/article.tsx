@@ -308,10 +308,12 @@ function cachedAudioPath(relativePath: string): string {
   return Path.join(FileManager.documentsDirectory, AUDIO_CACHE_ROOT, relativePath)
 }
 
-/** 缓存文件是否像回事：有效的一集至少 1MB，太小说明是坏缓存 */
+/** 缓存文件是否像回事：有效的一集至少 1MB，且文件头是 mp3（ID3 或 0xFF 帧同步）——旧版本可能写坏过 */
 function cachedFileOk(p: string): boolean {
   try {
-    return FileManager.statSync(p).size > 100000
+    if (FileManager.statSync(p).size <= 100000) return false
+    const bytes = FileManager.readAsBytesSync(p)
+    return (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || bytes[0] === 0xff
   } catch {
     return false
   }
@@ -334,10 +336,33 @@ async function downloadEpisodeAudio(relativePath: string): Promise<string> {
   if (!resp.ok) throw new Error("HTTP " + resp.status)
   const buf = await resp.arrayBuffer()
   if (buf.byteLength === 0) throw new Error("下载内容为空")
-  FileManager.writeAsBytes(dest, new Uint8Array(buf))
+  // 走 Data 落盘，不经过 Uint8Array/writeAsBytes（真机上疑似把字节写坏：大小对、内容不可解码）
+  const data = Data.fromArrayBuffer(buf)
+  if (data == null) throw new Error("Data.fromArrayBuffer 返回空")
+  FileManager.writeAsDataSync(dest, data)
   const written = FileManager.statSync(dest).size
   if (written !== buf.byteLength) throw new Error(`写入不完整（${written}/${buf.byteLength} 字节）`)
+  const head = FileManager.readAsBytesSync(dest).slice(0, 3)
+  const isMp3 = (head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33) || head[0] === 0xff
+  if (!isMp3) throw new Error(`文件头异常（${bytesToHex(head)}，不是 mp3）——下载或写盘通道有问题`)
   return dest
+}
+
+function bytesToHex(bytes: Uint8Array | number[]): string {
+  let hex = ""
+  for (let i = 0; i < Math.min(3, bytes.length); i++) {
+    hex += (bytes[i] as number).toString(16).padStart(2, "0") + " "
+  }
+  return hex.trim()
+}
+
+function fileHeadText(p: string): string {
+  try {
+    const bytes = FileManager.readAsBytesSync(p)
+    return bytesToHex(bytes) + (((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || bytes[0] === 0xff) ? " ✓" : " ✗非mp3")
+  } catch {
+    return "读不了"
+  }
 }
 
 function PodcastSession({
@@ -361,6 +386,7 @@ function PodcastSession({
   const [errMsg, setErrMsg] = useState<string | null>(null)
   const [sessionErr, setSessionErr] = useState<string | null>(null)
   const [tcStatus, setTcStatus] = useState("—")
+  const [headInfo, setHeadInfo] = useState("—")
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -398,6 +424,7 @@ function PodcastSession({
     setReady(false)
     if (audioPath == null) return
     ensureAudioSession()
+    setHeadInfo(fileHeadText(audioPath))
     const player = new AVPlayer()
     let isReady = false
     player.onReadyToPlay = () => {
@@ -539,7 +566,7 @@ function PodcastSession({
           </Text>
         </HStack>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断：缓存 {cacheSizeText(audioPath)} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus}
+          诊断：缓存 {cacheSizeText(audioPath)} · 头 {headInfo} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
         </Text>
         <Slider
           disabled={!ready}
