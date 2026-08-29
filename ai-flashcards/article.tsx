@@ -199,18 +199,22 @@ function windowIndices(idx: number, n: number): number[] {
   return out
 }
 
-function ensureAudioSession(): void {
-  if (audioSessionReady) return
+async function ensureAudioSession(): Promise<string | null> {
+  if (audioSessionReady) return null
   try {
-    SharedAudioSession.setCategory(
+    await SharedAudioSession.setCategory(
       "playback",
       ["mixWithOthers", "allowAirPlay", "allowBluetooth", "allowBluetoothA2DP"],
     )
-    SharedAudioSession.setMode("spokenAudio")
-    SharedAudioSession.setActive(true)
+    try {
+      // 文档未收录的 API：存在就调用，不存在也不能拖垮会话激活（真机疑似 TypeError，曾被静默吞掉）
+      await SharedAudioSession.setMode("spokenAudio")
+    } catch {}
+    await SharedAudioSession.setActive(true)
     audioSessionReady = true
+    return null
   } catch (e) {
-    console.error("音频会话初始化失败：", e)
+    return e instanceof Error ? e.message : String(e)
   }
 }
 
@@ -344,6 +348,7 @@ function PodcastSession({
   )
   const [attempt, setAttempt] = useState(0)
   const [errMsg, setErrMsg] = useState<string | null>(null)
+  const [tcStatus, setTcStatus] = useState("—")
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -388,6 +393,9 @@ function PodcastSession({
       setReady(true)
       setDuration(player.duration)
     }
+    player.onTimeControlStatusChanged = (status: string) => {
+      setTcStatus(String(status))
+    }
     player.onError = (message: string) => {
       if (isReady) return
       setErrMsg(String(message))
@@ -423,14 +431,25 @@ function PodcastSession({
     }
   }, [audioPath])
 
-  function play() {
+  async function play() {
     const p = playerRef.current
     if (p == null) return
     if (activePlayer != null && activePlayer !== p) {
       try { activePlayer.pause() } catch {}
     }
     activePlayer = p
-    p.play()
+    const sessionErr = await ensureAudioSession()
+    if (sessionErr != null) {
+      setErrMsg(`音频会话初始化失败：${sessionErr}`)
+      setPhase("error")
+      return
+    }
+    const started = p.play()
+    if (!started) {
+      setErrMsg("播放器拒绝开始播放（play() 返回 false）")
+      setPhase("error")
+      return
+    }
     setPlaying(true)
   }
 
@@ -496,7 +515,7 @@ function PodcastSession({
           </Text>
         </HStack>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断：缓存 {cacheSizeText(audioPath)} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"}
+          诊断：缓存 {cacheSizeText(audioPath)} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus}
         </Text>
         <Slider
           disabled={!ready}
