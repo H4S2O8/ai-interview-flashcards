@@ -1,7 +1,7 @@
 import {
   Button, HStack, Link, Path, ProgressView, RoundedRectangle, Script, ScrollView, Slider, Spacer,
   Text, VStack,
-  useEffect, useRef, useState,
+  useEffect, useObservable, useRef, useState,
 } from "scripting"
 
 /**
@@ -425,22 +425,28 @@ function PodcastSession({
   const [attempt, setAttempt] = useState(0)
   const [errMsg, setErrMsg] = useState<string | null>(null)
   const [sessionErr, setSessionErr] = useState<string | null>(null)
-  const [tcStatus, setTcStatus] = useState("—")
   const [headInfo, setHeadInfo] = useState("—")
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
-  const [current, setCurrent] = useState(0)
-  const [duration, setDuration] = useState(0)
   const [browse, setBrowse] = useState(false)
   const [sessionInfo, setSessionInfo] = useState("—")
   const [builds, setBuilds] = useState(0)
-  const [tick, setTick] = useState(0)
+  // 下面这几个由定时器驱动，必须走 observable：v2.5.7 实测「轮询 0」——
+  // setInterval 回调里的 setState 不会触发重渲染（Button / AVPlayer 回调里的会）。
+  // 文档进度计时器示例的原话：「脚本环境只保证 setTimeout/clearTimeout」，
+  // 且它推 UI 用的是 observable.setValue。index.tsx 里作者也是这么用的。
+  // JSX 里读 .value 才会订阅到更新。
+  const playhead = useObservable<number>(0)
+  const durationObs = useObservable<number>(0)
+  const tcObs = useObservable<string>("—")
+  const pollObs = useObservable<number>(0)
+  const stallMsg = useObservable<string | null>(null)
   const playerRef = useRef<AVPlayer | null>(null)
   const dlSeq = useRef(0)
   const builtFor = useRef<string | null>(null)
   const buildCount = useRef(0)
-  const pollCount = useRef(0)
   const pollRef = useRef<any>(null)
+  const pollingFor = useRef<AVPlayer | null>(null)
   const watchdogRef = useRef<any>(null)
   const wantPlay = useRef(false)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
@@ -489,8 +495,9 @@ function PodcastSession({
   }, [])
 
   function stopPolling() {
-    if (pollRef.current != null) clearInterval(pollRef.current)
+    if (pollRef.current != null) clearTimeout(pollRef.current)
     pollRef.current = null
+    pollingFor.current = null
     if (watchdogRef.current != null) clearTimeout(watchdogRef.current)
     watchdogRef.current = null
   }
@@ -505,18 +512,23 @@ function PodcastSession({
     playerRef.current = null
   }
 
-  // 诊断全部改成「直接问播放器」。onTimeControlStatusChanged 只在状态变化时触发一次，
-  // 播放器悄悄停下来它不会再报 —— 之前那个「状态=2」很可能早就是陈的了。
+  // 诊断全部「直接问播放器」：onTimeControlStatusChanged 只在状态变化时触发一次，
+  // 播放器悄悄停下它不会再报 —— 之前那个「状态=2」很可能早就是陈的。
+  // 自递归 setTimeout 而非 setInterval：脚本环境只保证 setTimeout/clearTimeout。
+  function pollOnce() {
+    const player = pollingFor.current
+    if (player == null || playerRef.current !== player) return
+    pollObs.setValue(pollObs.value + 1)
+    try { playhead.setValue(player.currentTime) } catch {}
+    try { if (player.duration > 0) durationObs.setValue(player.duration) } catch {}
+    try { tcObs.setValue(`${String(player.timeControlStatus)} 速率${String(player.rate)}`) } catch {}
+    pollRef.current = setTimeout(pollOnce, 500)
+  }
+
   function startPolling(player: AVPlayer) {
     stopPolling()
-    pollRef.current = setInterval(() => {
-      if (playerRef.current !== player) return
-      pollCount.current += 1
-      setTick(pollCount.current)
-      try { setCurrent(player.currentTime) } catch {}
-      try { if (player.duration > 0) setDuration(player.duration) } catch {}
-      try { setTcStatus(`${String(player.timeControlStatus)} 速率${String(player.rate)}`) } catch {}
-    }, 500)
+    pollingFor.current = player
+    pollRef.current = setTimeout(pollOnce, 500)
   }
 
   async function buildPlayer(src: string) {
@@ -526,9 +538,11 @@ function PodcastSession({
     setBuilds(buildCount.current)
     setReady(false)
     setPlaying(false)
-    setCurrent(0)
-    setDuration(0)
     setBrowse(false)
+    playhead.setValue(0)
+    durationObs.setValue(0)
+    tcObs.setValue("—")
+    stallMsg.setValue(null)
     setHeadInfo(srcMode === "local" ? fileHeadText(src) : "在线不适用")
     // 文档里每个例子都是「先配好并激活会话，再 setSource」。
     // 之前 ensureAudioSession() 不 await 就往下走，setSource 跑在会话配好之前。
@@ -539,12 +553,13 @@ function PodcastSession({
     player.onReadyToPlay = () => {
       isReady = true
       setReady(true)
-      setDuration(player.duration)
+      durationObs.setValue(player.duration)
+      stallMsg.setValue(null)
       // 文档里 play() 一律写在 onReadyToPlay 里。用户已经按过播放就在这兑现。
       if (wantPlay.current) void startPlayback(player)
     }
     player.onTimeControlStatusChanged = (status: string) => {
-      setTcStatus(String(status))
+      tcObs.setValue(String(status))
     }
     player.onError = (message: string) => {
       if (isReady) return
@@ -571,10 +586,11 @@ function PodcastSession({
     const watchdogMs = srcMode === "remote" ? 25000 : 10000
     watchdogRef.current = setTimeout(() => {
       if (!isReady && playerRef.current === player) {
-        setErrMsg(srcMode === "remote"
+        // 这里不能用 setErrMsg/setPhase：setTimeout 里的 setState 不触发重渲染，
+        // v2.5.4 起「一直没出报错卡」多半就是这么来的。改推 observable。
+        stallMsg.setValue(srcMode === "remote"
           ? `${watchdogMs / 1000} 秒未进入可播放状态，网络太慢或音源不可达`
           : `${watchdogMs / 1000} 秒未进入可播放状态，文件可能损坏或格式异常`)
-        setPhase("error")
       }
     }, watchdogMs)
   }
@@ -610,7 +626,7 @@ function PodcastSession({
   }
 
   function seek(t: number) {
-    setCurrent(t)
+    playhead.setValue(t)
     if (playerRef.current != null) playerRef.current.currentTime = t
   }
 
@@ -620,10 +636,11 @@ function PodcastSession({
     setSessionErr(null)
     setReady(false)
     setPlaying(false)
-    setCurrent(0)
-    setDuration(0)
-    setTcStatus("—")
     setHeadInfo("—")
+    playhead.setValue(0)
+    durationObs.setValue(0)
+    tcObs.setValue("—")
+    stallMsg.setValue(null)
     setPhase(mode === "local" && audioPath == null ? "downloading" : "ready")
     builtFor.current = null
     wantPlay.current = false
@@ -638,8 +655,9 @@ function PodcastSession({
     setErrMsg(null)
     setSessionErr(null)
     setReady(false)
-    setCurrent(0)
-    setDuration(0)
+    playhead.setValue(0)
+    durationObs.setValue(0)
+    stallMsg.setValue(null)
     setAudioPath(null)
     setSrcMode("local")
     setPhase("downloading")
@@ -707,15 +725,18 @@ function PodcastSession({
             controlSize="small"
           />
           <Text font="caption2" foregroundStyle="tertiaryLabel">
-            {formatClock(current)} / {formatClock(duration)}
+            {formatClock(playhead.value)} / {formatClock(durationObs.value)}
           </Text>
         </HStack>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断①：音源 {srcMode === "remote" ? "在线" : "本地"} · 构建 {builds} · 轮询 {tick} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
+          诊断①：音源 {srcMode === "remote" ? "在线" : "本地"} · 构建 {builds} · 轮询 {pollObs.value} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcObs.value} · 时长 {formatClock(durationObs.value)}
         </Text>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
           诊断②：会话 {sessionInfo} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo}
         </Text>
+        {stallMsg.value != null ? (
+          <Text font="caption2" foregroundStyle="systemOrange">卡住了：{stallMsg.value}</Text>
+        ) : null}
         {sessionErr != null ? (
           <Text font="caption2" foregroundStyle="systemOrange">会话配置报错：{sessionErr}</Text>
         ) : null}
@@ -725,8 +746,8 @@ function PodcastSession({
         <Slider
           disabled={!ready}
           min={0}
-          max={duration > 0 ? duration : 1}
-          value={current}
+          max={durationObs.value > 0 ? durationObs.value : 1}
+          value={playhead.value}
           onChanged={value => seek(value)}
         />
         <Button
@@ -744,7 +765,7 @@ function PodcastSession({
       {showLyrics && lyrics.length > 0 ? (
         <SyncedLyrics
           lines={lyrics}
-          playhead={current}
+          playhead={playhead.value}
           browse={browse}
           onBrowse={setBrowse}
           onSeek={seek}
