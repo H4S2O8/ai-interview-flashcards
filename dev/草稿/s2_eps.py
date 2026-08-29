@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import pathlib
+
+# 相对仓库根定位，别写死本机绝对路径（仓库是公开的）
+ARTICLES_JSON = str(pathlib.Path(__file__).resolve().parents[2] / "ai-flashcards" / "articles.json")
 # S2 tools 板块讲稿定稿区。EPS[n] = (标题, [(role, text), ...])
 # 铁律：文本内不得出现半角双引号和反斜杠；数字中文；无括号动作。
 
@@ -726,7 +730,7 @@ EPS[2] = ("LLM 是如何学会调用外部工具的？", [
 # ---- 覆盖探针 ----
 if __name__ == "__main__":
     import json
-    arts = json.load(open("~/Projects/flashcards/ai-flashcards/articles.json", encoding="utf-8"))["decks"]["tools"]
+    arts = json.load(open(ARTICLES_JSON, encoding="utf-8"))["decks"]["tools"]
     KEY = {
         1: ["Function Calling", "JSON", "schema", "description", "tool_calls", "finish_reason",
             "role", "关键词", "格式统一", "OpenAI", "Claude", "Gemini", "Qwen", "两轮对话", "并行",
