@@ -15,12 +15,14 @@
 
 ## 仓库结构：开发 / 生产分离
 
-| 目录 | 角色 |
+| 分支 | 角色 |
 | --- | --- |
-| `ai-flashcards/` | **生产环境**：手机通过 `remoteResource` 同步的唯一范围，只放 App 运行需要的文件 |
-| `dev/` | **开发环境**：生成脚本、静态检查、制作手册、讲稿对白、TTS 缓存等，不会同步到手机 |
+| `master` | **生产环境**：手机通过 `remoteResource` 同步的分支，只放 App 运行需要的文件（`ai-flashcards/`） |
+| `dev` | **开发环境**：生成脚本、静态检查、制作手册、讲稿对白、TTS 缓存等，只存在于 dev 分支，永不被手机拉取 |
 
-给 `ai-flashcards/` 增删文件前先想想：手机上用得到吗？用不到就放 `dev/`。
+给 `master` 增删文件前先想想：手机上用得到吗？用不到就提交到 `dev` 分支。
+
+本地同时改两边：`git worktree add ../flashcards-dev dev`，master 留在当前目录，dev 在旁边目录，互不干扰。
 
 ## 文件
 
@@ -36,11 +38,9 @@
 | `ai-flashcards/articles.json` | 五个专题共 86 篇原文正文（不含配图），可选资源 |
 | `ai-flashcards/article.tsx` | 原文阅读器；Agent 专题带播客播放器与讲稿 |
 | `ai-flashcards/podcasts_renna.json` | 《Agent 面试课》讲稿（16 集，仁菜 / 桑多涅） |
-| `ai-flashcards/audio/renna/*.mp3` | 各集 TTS 音频（同名 `.lrc` 为同步歌词，App 会读） |
-| `dev/讲稿/*.txt` | 与 json 同源的可读对白（仅开发参考） |
-| `dev/gen_podcast_renna.py` | 用 Fish Audio 重新生成讲稿 JSON 和 mp3 |
-| `dev/check.py` | 静态检查：未定义组件、Hooks 规则、几类文档零用例的高危写法 |
-| `dev/播客讲稿制作手册.md` | 后续板块讲稿生成的交接文档 |
+| `ai-flashcards/audio/renna/*.lrc` | 各集同步歌词（App 会读；mp3 托管在 Cloudflare R2，见下） |
+
+开发工具与文档（生成脚本、静态检查、制作手册、讲稿、草稿）在 **dev 分支**，见上文「仓库结构」。
 
 ## 自动更新
 
