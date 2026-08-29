@@ -1,6 +1,6 @@
 import {
-  Button, HStack, Link, Path, ProgressView, RoundedRectangle, Script, ScrollView, Slider, Spacer,
-  Text, VStack,
+  Button, HStack, Link, NavigationLink, Path, ProgressView, RoundedRectangle, Script, ScrollView,
+  Slider, Spacer, Text, VStack,
   useEffect, useObservable, useRef, useState,
 } from "scripting"
 
@@ -76,6 +76,37 @@ export function hasPodcast(deck: string, qno: number): boolean {
 }
 
 /** 列出某个专题下的全部原文篇目，按题号排序 */
+/** 某个 deck 的播客集列表，按集号排序。ms 是整集时长（毫秒），老数据可能没有。 */
+export function listEpisodes(deck: string): { qno: number; title: string; ms?: number; hasArticle: boolean }[] {
+  const d = loadPodcasts()?.decks?.[deck]
+  if (d == null) return []
+  return Object.keys(d)
+    .map(k => ({
+      qno: Number(k),
+      title: d[k].title,
+      ms: d[k].ms,
+      hasArticle: hasArticle(deck, Number(k)),
+    }))
+    .filter(e => !Number.isNaN(e.qno))
+    .sort((a, b) => a.qno - b.qno)
+}
+
+/** 播客的系列名与两位主播，给列表页做页眉 */
+export function podcastMeta(): { series: string; host: string; guest: string } | null {
+  const p = loadPodcasts()
+  if (p == null) return null
+  return { series: p.series, host: p.speakers.host.name, guest: p.speakers.guest.name }
+}
+
+/** 毫秒 → 「12 分 34 秒」，给列表页用 */
+export function formatEpisodeLength(ms?: number): string | null {
+  if (ms == null || ms <= 0) return null
+  const total = Math.round(ms / 1000)
+  const m = Math.floor(total / 60)
+  const sec = total % 60
+  return m > 0 ? `${m} 分 ${sec} 秒` : `${sec} 秒`
+}
+
 export function listArticles(deck: string): { qno: number; title: string }[] {
   const all = loadArticles()
   const d = all?.[deck]
@@ -874,6 +905,38 @@ function ArticleBody({ article }: { article: Article }) {
   )
 }
 
+/**
+ * 上一集 / 下一集。用 NavigationLink 推新页（会叠栈，但这个框架没有「替换当前页」），
+ * 好过退回列表再点进来。
+ */
+function EpisodeNav({ deck, qno }: { deck: string; qno: number }) {
+  const eps = listEpisodes(deck)
+  const at = eps.findIndex(e => e.qno === qno)
+  if (at < 0) return null
+  const prev = at > 0 ? eps[at - 1] : null
+  const next = at < eps.length - 1 ? eps[at + 1] : null
+  if (prev == null && next == null) return null
+  return (
+    <HStack spacing={10}>
+      {prev != null ? (
+        <NavigationLink destination={<ArticleView deck={deck} qno={prev.qno} focus="podcast" />}>
+          <Text font="footnote" foregroundStyle="accentColor" lineLimit={1}>
+            ← 第 {prev.qno} 集
+          </Text>
+        </NavigationLink>
+      ) : null}
+      <Spacer />
+      {next != null ? (
+        <NavigationLink destination={<ArticleView deck={deck} qno={next.qno} focus="podcast" />}>
+          <Text font="footnote" foregroundStyle="accentColor" lineLimit={1}>
+            第 {next.qno} 集 →
+          </Text>
+        </NavigationLink>
+      ) : null}
+    </HStack>
+  )
+}
+
 function PaneSwitcher({ pane, onChange }: { pane: Pane; onChange: (p: Pane) => void }) {
   return (
     <HStack spacing={8}>
@@ -955,6 +1018,7 @@ export function ArticleView({
               showLyrics={showPodcast}
             >
               {hasBoth ? <PaneSwitcher pane={pane} onChange={setPane} /> : null}
+              <EpisodeNav deck={deck} qno={qno} />
             </PodcastSession>
           </VStack>
         ) : null}

@@ -11,7 +11,10 @@ import {
   type Card, type Deck, type Stats,
 } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
-import { ArticleView, hasArticle, hasPodcast, listArticles, warmArticles } from "./article"
+import {
+  ArticleView, formatEpisodeLength, hasArticle, hasPodcast, listArticles, listEpisodes,
+  podcastMeta, warmArticles,
+} from "./article"
 import { AskAILink, AskAIView, LlmSettingsBlock } from "./ask"
 
 const SESSION_LIMIT = 40
@@ -27,22 +30,26 @@ const SWIPE_THRESHOLD = 110
 const FLY_DISTANCE = 900
 /** 飞出动画时长，到时才真正换下一张 */
 const FLY_MS = 210
+/** 本轮复习到第几张之后不再显示滑动提示 */
+const SWIPE_HINT_REVIEWS = 5
 const SWIPE_LEFT_GRADE: Grade = 0
 const SWIPE_RIGHT_GRADE: Grade = 2
 
 /** idle 正常 / flying 飞出中 / entering 新卡入场前的一帧 */
 type Phase = "idle" | "flying" | "entering"
 
-/** 右下角的版本角标：脚本版本取自 script.json，题库版本取自已导入的 cards.json */
+/** 版本行：脚本版本取自 script.json，题库版本取自已导入的 cards.json。
+ *  原来常驻复习页底部，占一整行只为显示版本号 —— 复习页寸土寸金，挪到统计页。 */
 function VersionBadge() {
   const [seed, setSeed] = useState<number | null>(null)
   useEffect(() => { seedVersion().then(setSeed) }, [])
 
   const app = Script.metadata?.version ?? "?"
   return (
-    <HStack padding={{ horizontal: 18, bottom: 4 }}>
+    <HStack>
+      <Text foregroundStyle="secondaryLabel">版本</Text>
       <Spacer />
-      <Text font="caption2" foregroundStyle="tertiaryLabel">
+      <Text foregroundStyle="secondaryLabel">
         v{app}{seed != null ? ` · 题库 v${seed}` : ""}
       </Text>
     </HStack>
@@ -237,7 +244,6 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
         <Button title="再查一次" systemImage="arrow.clockwise" action={load}
           buttonStyle="bordered" buttonBorderShape="capsule" controlSize="large" />
         <Spacer />
-        <VersionBadge />
       </VStack>
     )
   }
@@ -247,6 +253,8 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
   const progress = total === 0 ? 0 : index / total
 
   const fit = fitFonts(card.front, card.back, revealed)
+  // 滑动手势的提示只在刚上手时给：熟练之后它就只是噪音，还占着一行
+  const showSwipeHint = done < SWIPE_HINT_REVIEWS
   // 注意：这里刻意不读 dragX.value / tick.value —— 一读就会让整页每帧重渲染。
   // 位移相关的一切都封在 SwipeCard 里。
 
@@ -353,7 +361,9 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
             ))}
           </HStack>
           <HStack spacing={5}>
-            <Text font="caption2" foregroundStyle="tertiaryLabel">← 左滑 忘了</Text>
+            {showSwipeHint ? (
+              <Text font="caption2" foregroundStyle="tertiaryLabel">← 左滑 忘了</Text>
+            ) : null}
             <Spacer />
             <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
               <Text font="caption2" foregroundStyle="accentColor">询问 AI</Text>
@@ -374,7 +384,9 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
               </NavigationLink>
             ) : null}
             <Spacer />
-            <Text font="caption2" foregroundStyle="tertiaryLabel">右滑 良好 →</Text>
+            {showSwipeHint ? (
+              <Text font="caption2" foregroundStyle="tertiaryLabel">右滑 良好 →</Text>
+            ) : null}
           </HStack>
         </VStack>
       ) : (
@@ -394,7 +406,6 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
         </VStack>
       )}
 
-      <VersionBadge />
     </VStack>
   )
 }
@@ -496,35 +507,71 @@ function BrowseTab() {
   )
 }
 
-// ------------------------------------------------------------- 原文
+// ------------------------------------------------------------- 听课
 
-function ArticlesTab() {
+/**
+ * 播客课列表。以「集」为主轴 —— 播客是这个 App 最有特色的内容，
+ * 之前埋在叫「原文」的 tab 里、还只是文章标题底下一行小字，等于没有入口。
+ * 没有配播客、只有原文的题，收在最后一节里。
+ */
+function PodcastTab() {
   const [decks, setDecks] = useState<Deck[]>([])
   useEffect(() => { listDecks().then(setDecks) }, [])
 
+  const meta = podcastMeta()
+
   return (
     <NavigationStack>
-      <List navigationTitle="原文">
+      <List navigationTitle="听课">
         {decks.map(deck => {
-          const items = listArticles(deck.id)
-          if (items.length === 0) return null
+          const episodes = listEpisodes(deck.id)
+          if (episodes.length === 0) return null
           return (
-            <Section header={<Text>{deck.name} · {items.length} 篇</Text>}>
-              {items.map(it => (
+            <Section
+              header={<Text>{deck.name} · {episodes.length} 集</Text>}
+              // series 是整档节目名，两个 deck 是它的两季 —— 挂在分节脚注里会和
+              // 分节标题打架，这里只署主播
+              footer={meta != null
+                ? <Text>{meta.host} / {meta.guest} 主讲</Text>
+                : undefined}
+            >
+              {episodes.map(ep => (
+                <NavigationLink
+                  destination={<ArticleView deck={deck.id} qno={ep.qno} focus="podcast" />}
+                >
+                  <HStack spacing={12}>
+                    <Text font="footnote" fontWeight="bold" foregroundStyle="accentColor"
+                      frame={{ width: 30 }}>
+                      {ep.qno}
+                    </Text>
+                    <VStack alignment="leading" spacing={3}>
+                      <Text lineLimit={2}>{ep.title}</Text>
+                      <Text font="caption2" foregroundStyle="tertiaryLabel">
+                        {[formatEpisodeLength(ep.ms), ep.hasArticle ? "含原文" : null]
+                          .filter(x => x != null).join(" · ") || "播客课"}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </NavigationLink>
+              ))}
+            </Section>
+          )
+        })}
+
+        {decks.map(deck => {
+          const only = listArticles(deck.id).filter(a => !hasPodcast(deck.id, a.qno))
+          if (only.length === 0) return null
+          return (
+            <Section header={<Text>{deck.name} · 只有原文 {only.length} 篇</Text>}>
+              {only.map(it => (
                 <NavigationLink
                   destination={<ArticleView deck={deck.id} qno={it.qno} focus="article" />}
                 >
-                  <HStack spacing={10}>
-                    <Text font="caption" fontWeight="semibold" foregroundStyle="accentColor"
-                      frame={{ width: 26 }}>
+                  <HStack spacing={12}>
+                    <Text font="caption" foregroundStyle="tertiaryLabel" frame={{ width: 30 }}>
                       {it.qno}
                     </Text>
-                    <VStack alignment="leading" spacing={2}>
-                      <Text lineLimit={2}>{it.title}</Text>
-                      {hasPodcast(deck.id, it.qno) ? (
-                        <Text font="caption2" foregroundStyle="tertiaryLabel">播客课 · 同步歌词</Text>
-                      ) : null}
-                    </VStack>
+                    <Text lineLimit={2}>{it.title}</Text>
                   </HStack>
                 </NavigationLink>
               ))}
@@ -615,6 +662,10 @@ function StatsTab() {
           <Button title="重新导入卡片" systemImage="arrow.down.doc" action={reimport} />
           <Button title="清空复习进度" systemImage="trash" role="destructive" action={reset} />
         </Section>
+
+        <Section>
+          <VersionBadge />
+        </Section>
       </List>
     </NavigationStack>
   )
@@ -638,8 +689,8 @@ function Root() {
       <Tab title="题库" systemImage="books.vertical" value={1}>
         <BrowseTab />
       </Tab>
-      <Tab title="原文" systemImage="doc.text" value={2}>
-        <ArticlesTab />
+      <Tab title="听课" systemImage="headphones" value={2}>
+        <PodcastTab />
       </Tab>
       <Tab title="统计" systemImage="chart.bar" value={3}>
         <StatsTab />
