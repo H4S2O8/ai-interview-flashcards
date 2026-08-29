@@ -1,0 +1,11 @@
+name = "flashcards-audio"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "ai-flashcards-audio"
+
+[[routes]]
+pattern = "audio.asylum.icu"
+custom_domain = true
