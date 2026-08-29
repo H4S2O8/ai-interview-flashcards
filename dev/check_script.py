@@ -65,6 +65,7 @@ def main():
     body = "".join(texts)
     lens = [len(t) for t in texts]
     fail = []
+    warn = []
 
     # 1. 硬约束（手册 §1）
     hard = {
@@ -101,6 +102,11 @@ def main():
             ratio = src / know if know else 0
             if ratio < 1.6:
                 fail.append(f"知识压缩比 {ratio:.2f}x 低于 1.6x —— 接近照读原文")
+            elif ratio > 3.5:
+                # 只警告不判失败：分母靠关键词表估算，剧情重的集子（非知识轮高）会被高估。
+                # 见到这条要人工核一遍原文覆盖，别直接当漏。
+                warn.append(f"知识压缩比 {ratio:.2f}x 高于 3.5x —— 需人工核对原文覆盖"
+                            f"（剧情重的集子此值会虚高）")
 
     # 4. 人设：桑多涅不该长篇大论
     gl = [len(t) for r, t in ts if r == "桑多涅"]
@@ -113,6 +119,8 @@ def main():
         if ratio: print(f"   知识压缩比 {ratio:.2f}x")
         print("   " + " · ".join(
             f"{k} {v if isinstance(v,int) else format(v,'.0%')}" for k, v in warm.items()))
+    for w in warn:
+        print("   ! " + w)
     if fail:
         print("   ✗ " + "\n   ✗ ".join(fail))
         return 1
