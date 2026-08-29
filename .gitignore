@@ -11,8 +11,11 @@ __pycache__/
 # TTS 分句缓存（体积大，不进仓库）
 dev/.tts-cache/
 
-# 播客音频不进仓库（托管在 Cloudflare R2，App 首次收听时下载缓存）
-ai-flashcards/audio/renna/*.mp3
+# 播客音频一律不进仓库（托管在 Cloudflare R2，App 按需下载缓存）。
+# 用 *.mp3 而不是限定目录：dev 分支曾经把 renna/01-16.mp3 提交进去，
+# 加了目录规则也没用 —— .gitignore 管不了已经被跟踪的文件，
+# 结果 54MB 的音频一直压在历史里（仓库体积直接决定手机 remoteResource 拉取成败）。
+*.mp3
 
 # wrangler 本地模拟状态（r2 object 不带 --remote 会写进 CWD 的 .wrangler/）
 .wrangler/
