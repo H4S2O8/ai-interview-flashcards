@@ -362,16 +362,18 @@ function cachedAudioPath(relativePath: string): string {
   return Path.join(FileManager.documentsDirectory, AUDIO_CACHE_ROOT, relativePath)
 }
 
-/** 缓存文件是否像回事：有效的一集至少 1MB；文件头「明确不是 mp3」才判坏。
- *  头读不出来一律放行 —— 读通道本身不可靠（见 fileHeadHex 注释），
+/** 缓存文件是否像回事。只看大小（statSync 很便宜）——
+ *  文件头校验会走 Data.fromFile，那是把整个 3~5MB 读进内存只为看 4 个字节，
+ *  而这个函数在每次打开一集时都会跑。头校验留在下载完成后那一次做就够了。
+ *
+ *  另外：头读不出来一律放行。读通道本身不可靠（见 fileHeadHex 注释），
  *  v2.5.5 就是把「读不出」当成「不是 mp3」，导致好文件被反复判死、无限重下。 */
 function cachedFileOk(p: string): boolean {
   try {
-    if (FileManager.statSync(p).size <= 100000) return false
+    return FileManager.statSync(p).size > 100000
   } catch {
     return false
   }
-  return headIsMp3(fileHeadHex(p)) !== false
 }
 
 function cacheSizeText(p: string | null): string {
@@ -448,13 +450,14 @@ function PodcastSession({
   const relativePath = episode.audio
   const cachedPath = cachedAudioPath(relativePath)
   const remoteUrl = AUDIO_BASE + relativePath
-  // 音源：local 下载到 documentsDirectory 再播本地文件（默认，下一次、之后离线可听）；
-  // remote 直接把 R2 的 URL 交给 AVPlayer（setSource 支持远程 URL，Worker 支持 Range）。
-  // v2.5.6 曾默认 remote 来绕开文件通道，结果证明文件通道一直是好的 —— 坏的是
-  // v2.5.5 的文件头校验和定时器渲染。本地实测可播，默认改回来。
-  const [srcMode, setSrcMode] = useState<"remote" | "local">("local")
+  // 已经下过就用本地缓存（免流量、可离线），没下过就在线流式 ——
+  // **打开一集永远不会自动下载**：32 集，每集 3~5MB，光是翻一翻就能拉掉一百多兆。
+  // 下载只在用户明确按「下载到本地」时发生。
   const [audioPath, setAudioPath] = useState<string | null>(() =>
     cachedFileOk(cachedPath) ? cachedPath : null,
+  )
+  const [srcMode, setSrcMode] = useState<"remote" | "local">(
+    audioPath != null ? "local" : "remote",
   )
   // phase: downloading 拉取中 / ready 已就绪 / error 出错
   const [phase, setPhase] = useState<"downloading" | "ready" | "error">("ready")
@@ -498,7 +501,8 @@ function PodcastSession({
 
   const source = srcMode === "remote" ? remoteUrl : audioPath
 
-  // 切到本地音源、且没有可用缓存时才下载（只一次；失败可重试）。
+  // 只有用户显式切到本地音源、且还没缓存时才下载。默认音源是在线，
+  // 所以这个 effect 在正常翻集时根本不会触发（srcMode !== "local" 直接返回）。
   // 不用 cleanup 返回值，用递增序号丢弃过期响应（check.py 的 Hooks 扫描也认这种写法）。
   useEffect(() => {
     if (srcMode !== "local") return
@@ -748,7 +752,7 @@ function PodcastSession({
         background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
         <ProgressView />
         <Text font="footnote" foregroundStyle="secondaryLabel">
-          正在把这一集下载到本地（约 3~5 MB），只下载一次。不想等可以切回「音源：在线」。
+          正在下载这一集（约 3~5 MB），下完就能离线听。不想等可以切回「音源：在线」。
         </Text>
       </VStack>
     )
@@ -766,7 +770,9 @@ function PodcastSession({
           <Button title="仅重试播放" buttonStyle="bordered" buttonBorderShape="capsule"
             action={retryPlayOnly} frame={{ maxWidth: "infinity" }} />
           <Button
-            title={srcMode === "remote" ? "改用本地缓存" : "改用在线播放"}
+            title={srcMode === "remote"
+              ? (audioPath != null ? "改用本地缓存" : "下载到本地重试")
+              : "改用在线播放"}
             buttonStyle="borderedProminent" buttonBorderShape="capsule"
             action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
             frame={{ maxWidth: "infinity" }} />
@@ -838,7 +844,11 @@ function PodcastSession({
         {/* 工具行：次要功能压到小字号 */}
         <HStack spacing={10}>
           <Button
-            title={srcMode === "remote" ? "音源：在线" : "音源：本地"}
+            title={
+              srcMode === "local" ? "音源：本地缓存"
+                : audioPath != null ? "音源：在线（有缓存可切）"
+                  : "下载到本地"
+            }
             action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
             buttonStyle="borderless"
             controlSize="small"
