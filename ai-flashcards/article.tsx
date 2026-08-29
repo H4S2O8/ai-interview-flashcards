@@ -236,11 +236,16 @@ function windowIndices(idx: number, n: number): number[] {
 
 async function ensureAudioSession(): Promise<string | null> {
   if (audioSessionReady) return null
-  // OSStatus -50 = 参数不合法（真机实测某 option 被拒）。从全配置逐级降到最小配置，成功一个就锁定。
+  // OSStatus -50 = 参数不合法（真机实测 allowBluetooth 这类只对可录音 category 有效的
+  // option 会被拒）。逐级降配，成功一档就锁定。
+  //
+  // 顺序很重要：**不带 mixWithOthers 的排最前**。带上它 App 就只是「混进去一起响」，
+  // 拿不到系统的「正在播放」身份 —— 锁屏、控制中心、AirPods 捏一下的遥控事件
+  // 根本不会路由过来。播客要的是独占播放。mixWithOthers 只当兜底。
   const attempts: Array<[string, string[]]> = [
-    ["playback", ["mixWithOthers", "allowBluetooth", "allowBluetoothA2DP", "allowAirPlay"]],
-    ["playback", ["mixWithOthers"]],
     ["playback", []],
+    ["playback", ["allowAirPlay"]],
+    ["playback", ["mixWithOthers"]],
   ]
   let lastErr: string | null = null
   for (const [category, options] of attempts) {
@@ -281,6 +286,15 @@ async function describeAudioSession(): Promise<string> {
   } catch {
     return "读不出"
   }
+}
+
+/**
+ * 锁屏、控制中心、AirPods 的控制走系统的 Now Playing Center。
+ * MediaPlayer 是全局单例：nowPlayingInfo 一份、commandHandler 一个 ——
+ * 所以同一时刻只能有一个播放器登记，换集必须就地切换而不是叠导航栈。
+ */
+function clearNowPlaying(): void {
+  try { MediaPlayer.nowPlayingInfo = null } catch {}
 }
 
 function LyricRow({
@@ -440,11 +454,13 @@ function fileHeadText(p: string): string {
 }
 
 function PodcastSession({
-  episode, speakers, showLyrics, children,
+  episode, speakers, showLyrics, autoPlay, onFinished, children,
 }: {
   episode: Episode
   speakers: PodcastsFile["speakers"]
   showLyrics: boolean
+  autoPlay?: boolean
+  onFinished?: () => void
   children?: any
 }) {
   const relativePath = episode.audio
@@ -497,9 +513,29 @@ function PodcastSession({
   const seekGuard = useRef(0)
   const watchdogRef = useRef<any>(null)
   const wantPlay = useRef(false)
+  const epRef = useRef(relativePath)
+  // playing 的 ref 镜像：轮询是自递归 setTimeout，闭包里读 state 会拿到陈旧值
+  const playingRef = useRef(false)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
 
   const source = srcMode === "remote" ? remoteUrl : audioPath
+
+  // 换集时把整块播放状态复位。组件不会重挂载（这个框架的 key 语义没验证过，
+  // 不赌），所以显式重置 —— 否则上一集的缓存路径会漏到下一集。
+  useEffect(() => {
+    if (epRef.current === relativePath) return
+    epRef.current = relativePath
+    const cached = cachedFileOk(cachedPath) ? cachedPath : null
+    setAudioPath(cached)
+    setSrcMode(cached != null ? "local" : "remote")
+    setErrMsg(null)
+    setSessionErr(null)
+    setPhase("ready")
+    setHeadInfo("—")
+    builtFor.current = null
+    // 自动连播接过来的这一集要接着放
+    wantPlay.current = autoPlay === true
+  }, [relativePath])
 
   // 只有用户显式切到本地音源、且还没缓存时才下载。默认音源是在线，
   // 所以这个 effect 在正常翻集时根本不会触发（srcMode !== "local" 直接返回）。
@@ -530,6 +566,10 @@ function PodcastSession({
   // 每个实例都活不过几十毫秒。诊断行的「构建」就是来证伪它的 —— 正常应该恒等于 1。
   useEffect(() => {
     if (source == null) return
+    // 换集复位要一拍才落地，那一拍里 audioPath 还是上一集的路径。
+    // 不校验归属的话会拿旧 source 建一次播放器，而 wantPlay 此时已置位，
+    // 自动连播就会先抢播上一集。两种音源都以 relativePath 结尾，据此判断。
+    if (!source.endsWith(relativePath)) return
     if (builtFor.current === source && playerRef.current != null) return
     builtFor.current = source
     void buildPlayer(source)
@@ -551,6 +591,40 @@ function PodcastSession({
     watchdogRef.current = null
   }
 
+  /** 把当前进度推给系统，锁屏和控制中心的进度条才会走 */
+  function pushNowPlaying(player: AVPlayer, isPlaying: boolean) {
+    try {
+      MediaPlayer.nowPlayingInfo = {
+        title: episode.title,
+        artist: `${speakers.host.name} / ${speakers.guest.name}`,
+        albumTitle: podcastMeta()?.series ?? "播客课",
+        playbackRate: isPlaying ? rate : 0,
+        elapsedPlaybackTime: player.currentTime,
+        playbackDuration: player.duration > 0 ? player.duration : 0,
+      }
+    } catch {}
+  }
+
+  function registerRemoteCommands(player: AVPlayer) {
+    try {
+      MediaPlayer.setAvailableCommands([
+        "play", "pause", "skipBackward", "skipForward", "nextTrack", "previousTrack",
+      ])
+      MediaPlayer.commandHandler = (command: string) => {
+        if (playerRef.current !== player) return
+        switch (command) {
+          case "play": void play(); break
+          case "pause": pause(); break
+          case "skipBackward": skip(-SKIP_SECONDS); break
+          case "skipForward": skip(SKIP_SECONDS); break
+          case "nextTrack": if (onFinished != null) onFinished(); break
+          case "previousTrack": seek(0); break
+          default: break
+        }
+      }
+    } catch {}
+  }
+
   function teardownPlayer() {
     const p = playerRef.current
     if (p != null) {
@@ -559,6 +633,7 @@ function PodcastSession({
       if (activePlayer === p) activePlayer = null
     }
     playerRef.current = null
+    clearNowPlaying()
   }
 
   // 诊断全部「直接问播放器」：onTimeControlStatusChanged 只在状态变化时触发一次，
@@ -573,6 +648,8 @@ function PodcastSession({
     }
     try { if (player.duration > 0) durationObs.setValue(player.duration) } catch {}
     try { tcObs.setValue(`${String(player.timeControlStatus)} 速率${String(player.rate)}`) } catch {}
+    // 每 2 秒同步一次锁屏进度就够了，不必每拍都推
+    if (pollObs.value % 4 === 0) pushNowPlaying(player, playingRef.current)
     pollRef.current = setTimeout(pollOnce, 500)
   }
 
@@ -589,6 +666,7 @@ function PodcastSession({
     setBuilds(buildCount.current)
     setReady(false)
     setCanPlay(false)
+    playingRef.current = false
     setPlaying(false)
     setBrowse(false)
     playhead.setValue(0)
@@ -630,11 +708,17 @@ function PodcastSession({
     try { player.volume = 1 } catch {}
     player.onEnded = () => {
       wantPlay.current = false
+      playingRef.current = false
       setPlaying(false)
+      clearNowPlaying()
+      // 自动连播：交给上层换集，换过去之后 autoPlay 会让它接着放
+      if (onFinished != null) onFinished()
     }
     playerRef.current = player
     setCanPlay(true)
     startPolling(player)
+    registerRemoteCommands(player)
+    pushNowPlaying(player, false)
     // 兜底：一直不进入可播放状态就报错，别让用户对着 0:00 干等
     const watchdogMs = srcMode === "remote" ? 25000 : 10000
     watchdogRef.current = setTimeout(() => {
@@ -659,7 +743,9 @@ function PodcastSession({
       setPhase("error")
       return
     }
+    playingRef.current = true
     setPlaying(true)
+    pushNowPlaying(p, true)
   }
 
   async function play() {
@@ -675,7 +761,10 @@ function PodcastSession({
   function pause() {
     wantPlay.current = false
     playerRef.current?.pause()
+    playingRef.current = false
     setPlaying(false)
+    const p = playerRef.current
+    if (p != null) pushNowPlaying(p, false)
   }
 
   function seek(t: number) {
@@ -698,6 +787,16 @@ function PodcastSession({
     if (p == null) return
     try { p.defaultRate = next } catch {}
     if (playing) { try { p.rate = next } catch {} }
+    try {
+      MediaPlayer.nowPlayingInfo = {
+        title: episode.title,
+        artist: `${speakers.host.name} / ${speakers.guest.name}`,
+        albumTitle: podcastMeta()?.series ?? "播客课",
+        playbackRate: playing ? next : 0,
+        elapsedPlaybackTime: p.currentTime,
+        playbackDuration: p.duration > 0 ? p.duration : 0,
+      }
+    } catch {}
   }
 
   // 切换音源：清掉播放态，让播放器 effect 用新的 source 重建
@@ -916,10 +1015,16 @@ function ArticleBody({ article }: { article: Article }) {
 }
 
 /**
- * 上一集 / 下一集。用 NavigationLink 推新页（会叠栈，但这个框架没有「替换当前页」），
- * 好过退回列表再点进来。
+ * 上一集 / 下一集。就地换集，不推导航栈 —— 除了不叠页面，更重要的是
+ * MediaPlayer 的 commandHandler 是全局单例，多个播放器同时活着会互相抢。
  */
-function EpisodeNav({ deck, qno }: { deck: string; qno: number }) {
+function EpisodeNav({
+  deck, qno, onGo,
+}: {
+  deck: string
+  qno: number
+  onGo: (qno: number) => void
+}) {
   const eps = listEpisodes(deck)
   const at = eps.findIndex(e => e.qno === qno)
   if (at < 0) return null
@@ -929,19 +1034,13 @@ function EpisodeNav({ deck, qno }: { deck: string; qno: number }) {
   return (
     <HStack spacing={10}>
       {prev != null ? (
-        <NavigationLink destination={<ArticleView deck={deck} qno={prev.qno} focus="podcast" />}>
-          <Text font="footnote" foregroundStyle="accentColor" lineLimit={1}>
-            ← 第 {prev.qno} 集
-          </Text>
-        </NavigationLink>
+        <Button title={`← 第 ${prev.qno} 集`} action={() => onGo(prev.qno)}
+          buttonStyle="borderless" controlSize="small" />
       ) : null}
       <Spacer />
       {next != null ? (
-        <NavigationLink destination={<ArticleView deck={deck} qno={next.qno} focus="podcast" />}>
-          <Text font="footnote" foregroundStyle="accentColor" lineLimit={1}>
-            第 {next.qno} 集 →
-          </Text>
-        </NavigationLink>
+        <Button title={`第 ${next.qno} 集 →`} action={() => onGo(next.qno)}
+          buttonStyle="borderless" controlSize="small" />
       ) : null}
     </HStack>
   )
@@ -975,24 +1074,41 @@ export function ArticleView({
   qno: number
   focus?: Pane
 }) {
+  // 当前集提成状态：上一集/下一集和自动连播都靠改它来换集，页面不叠栈
+  const [curQno, setCurQno] = useState(qno)
+  // 自动连播接上来的那一集要接着放；手动点上下集则不自动播
+  const [autoPlay, setAutoPlay] = useState(false)
   const [article, setArticle] = useState<Article | null | undefined>(undefined)
   const [pane, setPane] = useState<Pane>(focus === "article" ? "article" : "podcast")
 
   useEffect(() => {
     const all = loadArticles()
-    setArticle(all?.[deck]?.[String(qno)] ?? null)
-  }, [deck, qno])
+    setArticle(all?.[deck]?.[String(curQno)] ?? null)
+  }, [deck, curQno])
+
+  function goTo(next: number, play: boolean) {
+    setAutoPlay(play)
+    setCurQno(next)
+  }
+
+  /** 本集放完：有下一集就接上去继续放 */
+  function onFinished() {
+    const eps = listEpisodes(deck)
+    const at = eps.findIndex(e => e.qno === curQno)
+    if (at < 0 || at >= eps.length - 1) return
+    goTo(eps[at + 1].qno, true)
+  }
 
   if (article === undefined) {
     return <VStack navigationTitle="原文"><Text foregroundStyle="secondaryLabel">载入中…</Text></VStack>
   }
 
   const podcasts = loadPodcasts()
-  const episode = podcasts?.decks?.[deck]?.[String(qno)] ?? null
+  const episode = podcasts?.decks?.[deck]?.[String(curQno)] ?? null
   const hasBoth = article != null && episode != null && podcasts != null
   const showPodcast = episode != null && podcasts != null && (article == null || pane === "podcast")
   const showArticle = article != null && (episode == null || pane === "article")
-  const title = showPodcast ? `第 ${qno} 集` : `第 ${qno} 题 · 原文`
+  const title = showPodcast ? `第 ${curQno} 集` : `第 ${curQno} 题 · 原文`
 
   if (article === null && episode == null) {
     return (
@@ -1026,9 +1142,11 @@ export function ArticleView({
               episode={episode}
               speakers={podcasts.speakers}
               showLyrics={showPodcast}
+              autoPlay={autoPlay}
+              onFinished={onFinished}
             >
               {hasBoth ? <PaneSwitcher pane={pane} onChange={setPane} /> : null}
-              <EpisodeNav deck={deck} qno={qno} />
+              <EpisodeNav deck={deck} qno={curQno} onGo={q => goTo(q, false)} />
             </PodcastSession>
           </VStack>
         ) : null}
