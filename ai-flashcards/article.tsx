@@ -293,6 +293,24 @@ function cachedAudioPath(relativePath: string): string {
   return Path.join(FileManager.documentsDirectory, AUDIO_CACHE_ROOT, relativePath)
 }
 
+/** 缓存文件是否像回事：有效的一集至少 1MB，太小说明是坏缓存 */
+function cachedFileOk(p: string): boolean {
+  try {
+    return FileManager.statSync(p).size > 100000
+  } catch {
+    return false
+  }
+}
+
+function cacheSizeText(p: string | null): string {
+  if (p == null) return "无"
+  try {
+    return `${(FileManager.statSync(p).size / 1048576).toFixed(2)} MB`
+  } catch {
+    return "不可读"
+  }
+}
+
 async function downloadEpisodeAudio(relativePath: string): Promise<string> {
   const dest = cachedAudioPath(relativePath)
   const dir = dest.substring(0, dest.lastIndexOf("/"))
@@ -317,12 +335,12 @@ function PodcastSession({
 }) {
   const relativePath = episode.audio
   const cachedPath = cachedAudioPath(relativePath)
-  // phase: downloading 拉取中 / ready 本地已就绪 / error 下载失败
-  const [phase, setPhase] = useState<"downloading" | "ready" | "error">(
-    FileManager.existsSync(cachedPath) ? "ready" : "downloading",
+  // phase: downloading 拉取中 / ready 本地已就绪 / error 出错
+  const [audioPath, setAudioPath] = useState<string | null>(() =>
+    cachedFileOk(cachedPath) ? cachedPath : null,
   )
-  const [audioPath, setAudioPath] = useState<string | null>(
-    FileManager.existsSync(cachedPath) ? cachedPath : null,
+  const [phase, setPhase] = useState<"downloading" | "ready" | "error">(
+    audioPath != null ? "ready" : "downloading",
   )
   const [attempt, setAttempt] = useState(0)
   const [errMsg, setErrMsg] = useState<string | null>(null)
@@ -477,6 +495,9 @@ function PodcastSession({
             {formatClock(current)} / {formatClock(duration)}
           </Text>
         </HStack>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">
+          诊断：缓存 {cacheSizeText(audioPath)} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"}
+        </Text>
         <Slider
           disabled={!ready}
           min={0}
