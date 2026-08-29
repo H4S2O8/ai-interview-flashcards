@@ -34,6 +34,7 @@ const SKIP_SECONDS = 15
 let cache: Record<string, Record<string, Article>> | null | undefined = undefined
 let podcastCache: PodcastsFile | null | undefined = undefined
 let lyricsCache: Record<string, LyricLine[]> = {}
+let coverArt: UIImage | null | undefined = undefined
 let audioSessionReady = false
 let activePlayer: { pause: () => void } | null = null
 
@@ -61,6 +62,19 @@ function loadPodcasts(): PodcastsFile | null {
   return podcastCache
 }
 
+/** 锁屏 / 控制中心封面。解码一次缓存，轮询推 Now Playing 时不要反复读盘。 */
+function loadCoverArt(): UIImage | null {
+  if (coverArt !== undefined) return coverArt
+  const p = Path.join(Script.directory, "podcast-cover.jpg")
+  if (!FileManager.existsSync(p)) { coverArt = null; return null }
+  try {
+    coverArt = UIImage.fromFile(p)
+  } catch {
+    coverArt = null
+  }
+  return coverArt
+}
+
 function getEpisode(deck: string, qno: number): Episode | null {
   return loadPodcasts()?.decks?.[deck]?.[String(qno)] ?? null
 }
@@ -69,6 +83,7 @@ function getEpisode(deck: string, qno: number): Episode | null {
 export function warmArticles(): void {
   loadArticles()
   loadPodcasts()
+  loadCoverArt()
 }
 
 export function hasPodcast(deck: string, qno: number): boolean {
@@ -592,16 +607,18 @@ function PodcastSession({
   }
 
   /** 把当前进度推给系统，锁屏和控制中心的进度条才会走 */
-  function pushNowPlaying(player: AVPlayer, isPlaying: boolean) {
+  function pushNowPlaying(player: AVPlayer, isPlaying: boolean, rateOverride?: number) {
     try {
-      MediaPlayer.nowPlayingInfo = {
+      const info = {
         title: episode.title,
         artist: `${speakers.host.name} / ${speakers.guest.name}`,
         albumTitle: podcastMeta()?.series ?? "播客课",
-        playbackRate: isPlaying ? rate : 0,
+        playbackRate: isPlaying ? (rateOverride ?? rate) : 0,
         elapsedPlaybackTime: player.currentTime,
         playbackDuration: player.duration > 0 ? player.duration : 0,
       }
+      const art = loadCoverArt()
+      MediaPlayer.nowPlayingInfo = art != null ? { ...info, artwork: art } : info
     } catch {}
   }
 
@@ -787,16 +804,7 @@ function PodcastSession({
     if (p == null) return
     try { p.defaultRate = next } catch {}
     if (playing) { try { p.rate = next } catch {} }
-    try {
-      MediaPlayer.nowPlayingInfo = {
-        title: episode.title,
-        artist: `${speakers.host.name} / ${speakers.guest.name}`,
-        albumTitle: podcastMeta()?.series ?? "播客课",
-        playbackRate: playing ? next : 0,
-        elapsedPlaybackTime: p.currentTime,
-        playbackDuration: p.duration > 0 ? p.duration : 0,
-      }
-    } catch {}
+    pushNowPlaying(p, playing, next)
   }
 
   // 切换音源：清掉播放态，让播放器 effect 用新的 source 重建
