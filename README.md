@@ -13,24 +13,34 @@
 | 大模型工程 | 22 | 134 | 6.1 |
 | LangChain 框架 | 12 | 100 | 8.3 | 12 |
 
+## 仓库结构：开发 / 生产分离
+
+| 目录 | 角色 |
+| --- | --- |
+| `ai-flashcards/` | **生产环境**：手机通过 `remoteResource` 同步的唯一范围，只放 App 运行需要的文件 |
+| `dev/` | **开发环境**：生成脚本、静态检查、制作手册、讲稿对白、TTS 缓存等，不会同步到手机 |
+
+给 `ai-flashcards/` 增删文件前先想想：手机上用得到吗？用不到就放 `dev/`。
+
 ## 文件
 
 | 文件 | 作用 |
 | --- | --- |
-| `index.tsx` | 主 App：复习 / 题库 / 原文 / 统计四个 Tab |
-| `widget.tsx` | 桌面小组件，显示今日待复习张数 |
-| `db.ts` | SQLite 建表、导入、查询、评分写回、LLM 配置与问答记录 |
-| `srs.ts` | SM-2 调度算法 |
-| `llm.ts` | 调用 OpenAI 兼容 Chat Completions（默认 SpaceXAI） |
-| `ask.tsx` | 询问 AI 页：编辑题干、发送、按题保存记录 |
-| `cards.json` | 卡片数据 |
-| `articles.json` | 五个专题共 86 篇原文正文（不含配图），可选资源 |
-| `article.tsx` | 原文阅读器；Agent 专题带播客播放器与讲稿 |
-| `podcasts_renna.json` | 《Agent 面试课》讲稿（16 集，仁菜 / 桑多涅） |
-| `audio/renna/*.mp3` | 各集 TTS 音频 |
-| `讲稿/*.txt` | 与 json 同源的可读对白 |
-| `gen_podcast_renna.py` | 用 Fish Audio 重新生成讲稿 JSON 和 mp3 |
-| `check.py` | 静态检查：未定义组件、Hooks 规则、几类文档零用例的高危写法 |
+| `ai-flashcards/index.tsx` | 主 App：复习 / 题库 / 原文 / 统计四个 Tab |
+| `ai-flashcards/widget.tsx` | 桌面小组件，显示今日待复习张数 |
+| `ai-flashcards/db.ts` | SQLite 建表、导入、查询、评分写回、LLM 配置与问答记录 |
+| `ai-flashcards/srs.ts` | SM-2 调度算法 |
+| `ai-flashcards/llm.ts` | 调用 OpenAI 兼容 Chat Completions（默认 SpaceXAI） |
+| `ai-flashcards/ask.tsx` | 询问 AI 页：编辑题干、发送、按题保存记录 |
+| `ai-flashcards/cards.json` | 卡片数据 |
+| `ai-flashcards/articles.json` | 五个专题共 86 篇原文正文（不含配图），可选资源 |
+| `ai-flashcards/article.tsx` | 原文阅读器；Agent 专题带播客播放器与讲稿 |
+| `ai-flashcards/podcasts_renna.json` | 《Agent 面试课》讲稿（16 集，仁菜 / 桑多涅） |
+| `ai-flashcards/audio/renna/*.mp3` | 各集 TTS 音频（同名 `.lrc` 为同步歌词，App 会读） |
+| `dev/讲稿/*.txt` | 与 json 同源的可读对白（仅开发参考） |
+| `dev/gen_podcast_renna.py` | 用 Fish Audio 重新生成讲稿 JSON 和 mp3 |
+| `dev/check.py` | 静态检查：未定义组件、Hooks 规则、几类文档零用例的高危写法 |
+| `dev/播客讲稿制作手册.md` | 后续板块讲稿生成的交接文档 |
 
 ## 自动更新
 
@@ -104,7 +114,7 @@ Agent 专题 16 道题被改写成双人播客课《Agent 面试课》：仁菜�
 重新生成（仓库根目录，`.env` 里要有 `FISH_KEY`）：
 
 ```
-.venv/bin/python ai-flashcards/gen_podcast_renna.py
+.venv/bin/python dev/gen_podcast_renna.py
 ```
 
 ## 内容出处与署名

@@ -5,9 +5,9 @@
   音频  -> audio/renna/NN.mp3
 
 用法（仓库根目录）：
-  .venv/bin/python ai-flashcards/gen_podcast_renna.py --dry-run     # 只看规模和预估，不调 API
-  .venv/bin/python ai-flashcards/gen_podcast_renna.py --json-only   # 只写 json
-  .venv/bin/python ai-flashcards/gen_podcast_renna.py --only 1      # 生成第 1 集
+  .venv/bin/python dev/gen_podcast_renna.py --dry-run     # 只看规模和预估，不调 API
+  .venv/bin/python dev/gen_podcast_renna.py --json-only   # 只写 json
+  .venv/bin/python dev/gen_podcast_renna.py --only 1      # 生成第 1 集
 """
 from __future__ import annotations
 
@@ -21,8 +21,11 @@ import threading
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+# 本脚本属于开发环境（dev/）。生产产物（json / mp3）写到手机同步的 ai-flashcards/，
+# 开发产物（缓存）留在 dev/，不会进生产仓库。
+DEV = Path(__file__).resolve().parent          # dev/
+REPO = DEV.parent
+APP = REPO / "ai-flashcards"                   # 生产目录（remoteResource 同步范围）
 ENV_FILE = REPO / ".env"
 
 SERIES = "Agent 面试课"
@@ -40,9 +43,9 @@ GAP_SAME_SEC = 0.18            # 同一人接着说
 LAME = "/opt/homebrew/bin/lame"
 CHARS_PER_MIN = 346          # 由第 1 集实测校准（3970 字 / 11.5 分钟）
 
-OUT_JSON = ROOT / "podcasts_renna.json"
-AUDIO_DIR = ROOT / "audio" / "renna"
-CACHE_DIR = ROOT / ".tts-cache"   # 分句 wav 缓存，失败重跑不必重复付费
+OUT_JSON = APP / "podcasts_renna.json"
+AUDIO_DIR = APP / "audio" / "renna"
+CACHE_DIR = DEV / ".tts-cache"   # 分句 wav 缓存，失败重跑不必重复付费
 CONCURRENCY = 5                  # 每集内并发合成的轮数（--concurrency 覆盖）
 
 EPISODES: dict[int, dict] = {}
@@ -1128,7 +1131,7 @@ def annotate_from_cache() -> int:
 
 
 def lrc_path(n: int) -> Path:
-    return (ROOT / EPISODES[n]["audio"]).with_suffix(".lrc")
+    return (APP / EPISODES[n]["audio"]).with_suffix(".lrc")
 
 
 def write_lrc(n: int) -> Path | None:
@@ -1258,7 +1261,7 @@ def generate(only: set[int] | None, force: bool, workers: int) -> None:
     with httpx.Client(limits=limits) as client:
         for n in nums:
             e = EPISODES[n]
-            dest = ROOT / e["audio"]
+            dest = APP / e["audio"]
             if not force and dest.exists() and dest.stat().st_size > 10_000:
                 print(f"skip {dest.name}（已存在）", flush=True)
                 continue

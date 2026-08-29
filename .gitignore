@@ -5,5 +5,8 @@
 # 构建产物
 *.scripting
 
+# Python
+__pycache__/
+
 # TTS 分句缓存（体积大，不进仓库）
-ai-flashcards/.tts-cache/
+dev/.tts-cache/

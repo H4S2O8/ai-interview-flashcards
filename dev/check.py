@@ -15,7 +15,10 @@ GLOBALS = {
 }
 
 fail = 0
-for f in sorted(pathlib.Path(".").glob("*.tsx")) + sorted(pathlib.Path(".").glob("*.ts")):
+# 默认检查生产目录（手机同步的 ai-flashcards/），也可传参指定别的目录
+TARGET = (pathlib.Path(sys.argv[1]) if len(sys.argv) > 1
+          else pathlib.Path(__file__).resolve().parent.parent / "ai-flashcards")
+for f in sorted(TARGET.glob("*.tsx")) + sorted(TARGET.glob("*.ts")):
     src = f.read_text(encoding="utf-8")
 
     imported = set()
