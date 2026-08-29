@@ -358,8 +358,16 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
             <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
               <Text font="caption2" foregroundStyle="accentColor">询问 AI</Text>
             </NavigationLink>
-            {hasArticle(card.deck, card.qno) ? (
-              <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
+            {hasArticle(card.deck, card.qno) || hasPodcast(card.deck, card.qno) ? (
+              <NavigationLink
+                destination={
+                  <ArticleView
+                    deck={card.deck}
+                    qno={card.qno}
+                    focus={hasPodcast(card.deck, card.qno) ? "podcast" : "article"}
+                  />
+                }
+              >
                 <Text font="caption2" foregroundStyle="accentColor">
                   {hasPodcast(card.deck, card.qno) ? "听课" : "原文"}
                 </Text>
@@ -430,10 +438,22 @@ function DeckDetail({ deck }: { deck: Deck }) {
     <List navigationTitle={deck.name} navigationBarTitleDisplayMode="inline">
       {groups.map(([qno, group]) => (
         <Section header={<Text>第 {qno} 题 · {group.length} 张</Text>}>
-          {hasArticle(deck.id, qno) ? (
-            <NavigationLink destination={<ArticleView deck={deck.id} qno={qno} />}>
+          {hasArticle(deck.id, qno) || hasPodcast(deck.id, qno) ? (
+            <NavigationLink
+              destination={
+                <ArticleView
+                  deck={deck.id}
+                  qno={qno}
+                  focus={hasPodcast(deck.id, qno) ? "podcast" : "article"}
+                />
+              }
+            >
               <Label
-                title={hasPodcast(deck.id, qno) ? "听课 · 原文" : "阅读原文"}
+                title={
+                  hasPodcast(deck.id, qno)
+                    ? (hasArticle(deck.id, qno) ? "听课 · 原文" : "听课")
+                    : "阅读原文"
+                }
                 systemImage={hasPodcast(deck.id, qno) ? "headphones" : "doc.text"}
               />
             </NavigationLink>
@@ -491,7 +511,9 @@ function ArticlesTab() {
           return (
             <Section header={<Text>{deck.name} · {items.length} 篇</Text>}>
               {items.map(it => (
-                <NavigationLink destination={<ArticleView deck={deck.id} qno={it.qno} />}>
+                <NavigationLink
+                  destination={<ArticleView deck={deck.id} qno={it.qno} focus="article" />}
+                >
                   <HStack spacing={10}>
                     <Text font="caption" fontWeight="semibold" foregroundStyle="accentColor"
                       frame={{ width: 26 }}>
@@ -500,7 +522,7 @@ function ArticlesTab() {
                     <VStack alignment="leading" spacing={2}>
                       <Text lineLimit={2}>{it.title}</Text>
                       {hasPodcast(deck.id, it.qno) ? (
-                        <Text font="caption2" foregroundStyle="tertiaryLabel">可听播客课</Text>
+                        <Text font="caption2" foregroundStyle="tertiaryLabel">播客课 · 同步歌词</Text>
                       ) : null}
                     </VStack>
                   </HStack>

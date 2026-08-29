@@ -25,10 +25,11 @@
 | `ask.tsx` | 询问 AI 页：编辑题干、发送、按题保存记录 |
 | `cards.json` | 卡片数据 |
 | `articles.json` | 五个专题共 86 篇原文正文（不含配图），可选资源 |
-| `article.tsx` | 原文阅读器；Agent 专题带播客播放器 |
-| `podcasts.json` | Agent 面试课双人讲稿（16 集） |
-| `audio/agent/*.mp3` | 各集 TTS 音频，挂在对应原文下面 |
-| `gen_podcast_audio.py` | 用 Fish Audio 重新生成讲稿 JSON 和 mp3 |
+| `article.tsx` | 原文阅读器；Agent 专题带播客播放器与讲稿 |
+| `podcasts_renna.json` | 《Agent 面试课》讲稿（16 集，仁菜 / 桑多涅） |
+| `audio/renna/*.mp3` | 各集 TTS 音频 |
+| `讲稿/*.txt` | 与 json 同源的可读对白 |
+| `gen_podcast_renna.py` | 用 Fish Audio 重新生成讲稿 JSON 和 mp3 |
 | `check.py` | 静态检查：未定义组件、Hooks 规则、几类文档零用例的高危写法 |
 
 ## 自动更新
@@ -96,14 +97,14 @@
 
 ## Agent 面试课（播客）
 
-Agent 专题 16 道题被改写成双人播客课《Agent 面试课》：主理人林林提问串场，周老师按面试官视角拆题。音频用 Fish Audio `s2.1-pro-free` 合成，mp3 放在 `audio/agent/`，播放器挂在对应原文下面，讲稿紧随其后。
+Agent 专题 16 道题被改写成双人播客课《Agent 面试课》：仁菜主理，桑多涅以面试官视角拆题。音频用 Fish Audio `s2.1-pro-free` 合成，mp3 放在 `audio/renna/`。播放器固定在原文页顶部，下面可切「歌词 / 原文」。歌词按 `audio/renna/*.lrc` 时间轴跟随播放滚动，点某一句或拖进度条可跳转。
 
-入口：原文 Tab 里标了「可听播客课」的篇目、题库分组的「听课 · 原文」、复习翻面后的「听课」。
+入口：原文 Tab 里标了「播客课 · 含讲稿」的篇目、题库分组的「听课 · 原文」、复习翻面后的「听课」。
 
 重新生成（仓库根目录，`.env` 里要有 `FISH_KEY`）：
 
 ```
-.venv/bin/python ai-flashcards/gen_podcast_audio.py
+.venv/bin/python ai-flashcards/gen_podcast_renna.py
 ```
 
 ## 内容出处与署名
