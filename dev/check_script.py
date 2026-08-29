@@ -11,22 +11,36 @@ import argparse, json, pathlib, re, statistics, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 INTERJ = list("啊诶欸哦噢呀嘛呢吧哎唉嗯") + ["……", "——", "！", "？！"]
-KNOW = ["RAG","检索","生成","微调","参数","chunk","Chunking","切割","Embedding","向量","token","prompt",
-        "Rerank","粗排","精排","知识库","模型","语义","召回","溯源","热更新","Cross-Encoder","Query",
-        "协议","调用","缓存","索引","图谱","幻觉","评测"]
+# 知识术语不再写死：从该集原文自动抽取（拉丁词 + 常见中文技术词），
+# 这样换 deck 不用改代码。写死过一次，llm 板块的 Transformer/Attention 全不认，
+# 导致非知识轮虚高、压缩比虚高。
+CN_TECH = ["模型","参数","训练","推理","向量","检索","生成","注意力","编码","解码","梯度","缓存",
+           "量化","微调","分词","显存","算力","采样","蒸馏","对齐","专家","路由","精度","延迟",
+           "吞吐","上下文","语义","预训练","涌现","幻觉","评测","部署","并行","归一化","激活"]
+
+def deck_terms(deck, qno):
+    """该集原文里出现的技术术语集合。"""
+    arts = json.loads((ROOT / "ai-flashcards" / "articles.json").read_text(encoding="utf-8"))["decks"]
+    a = arts.get(deck, {}).get(str(qno))
+    if a is None:
+        return set(CN_TECH)
+    src = " ".join(b["v"] for b in a["blocks"])
+    terms = {w for w in re.findall(r"[A-Za-z][A-Za-z0-9_.\-]{1,}", src) if len(w) > 1}
+    terms |= {w for w in CN_TECH if w in src}
+    return terms
 # S2 全季实测区间（手册 §2.5）
 BANDS = {"语气词轮": (0.51, 0.93), "感叹号": (3, 15), "问号": (10, 31),
          "非知识轮": (0.50, 1.00), "短轮": (0.08, 0.45)}
 
 
 def bare_digits(text):
-    """孤立的阿拉伯数字（违反手册 §1.4）。紧邻拉丁字母的放行 —— A2A / R1 / BM25
-    这类技术专名在 S1/S2 生产讲稿里是既成写法。"""
+    """孤立的阿拉伯数字（违反手册 §1.4）。
+    判定：取数字所在的最大 [A-Za-z0-9.-] 记号，记号里含拉丁字母就算技术专名，放行。
+    这样 A2A / R1 / BM25 / GPT-4 / INT8 / V3 都过，而「40」「2023」这种量词被拦。
+    A2A、R1 在 S1/S2 生产讲稿里是既成写法。"""
     out = []
-    for m in re.finditer(r"\d+", text):
-        before = text[m.start() - 1] if m.start() else ""
-        after = text[m.end()] if m.end() < len(text) else ""
-        if not (before.isalpha() and before.isascii()) and not (after.isalpha() and after.isascii()):
+    for m in re.finditer(r"[A-Za-z0-9.\-]*[0-9][A-Za-z0-9.\-]*", text):
+        if not re.search(r"[A-Za-z]", m.group()):
             out.append(m.group())
     return out
 
@@ -58,6 +72,8 @@ def main():
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
+    global TERMS
+    TERMS = deck_terms(args.deck, args.qno) if args.qno else set(CN_TECH)
     ts = turns(args.path)
     if not ts:
         print("✗ 没解析到任何台词行（格式应为「仁菜：…」）"); return 1
@@ -86,7 +102,7 @@ def main():
         "语气词轮": sum(1 for t in texts if any(i in t for i in INTERJ)) / len(texts),
         "感叹号": sum(t.count("！") for t in texts),
         "问号": sum(t.count("？") for t in texts),
-        "非知识轮": sum(1 for t in texts if not any(w in t for w in KNOW)) / len(texts),
+        "非知识轮": sum(1 for t in texts if not any(w in t for w in TERMS)) / len(texts),
         "短轮": sum(1 for L in lens if L <= 20) / len(lens),
     }
     for k, v in warm.items():
@@ -98,7 +114,7 @@ def main():
     if args.qno:
         src = source_chars(args.deck, args.qno)
         if src:
-            know = sum(len(t) for t in texts if any(w in t for w in KNOW))
+            know = sum(len(t) for t in texts if any(w in t for w in TERMS))
             ratio = src / know if know else 0
             if ratio < 1.6:
                 fail.append(f"知识压缩比 {ratio:.2f}x 低于 1.6x —— 接近照读原文")
