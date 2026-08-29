@@ -26,6 +26,10 @@ type LyricLine = { t: number; name: string; text: string; host: boolean }
 
 const LYRIC_BEFORE = 2
 const LYRIC_AFTER = 3
+/** 播客倍速档位，按钮上循环切换 */
+const RATES: number[] = [1, 1.25, 1.5, 2]
+/** 快退/快进步长（秒） */
+const SKIP_SECONDS = 15
 
 let cache: Record<string, Record<string, Article>> | null | undefined = undefined
 let podcastCache: PodcastsFile | null | undefined = undefined
@@ -298,7 +302,7 @@ function SyncedLyrics({
         <Spacer />
         <Text font="caption" foregroundStyle="tertiaryLabel">{idx + 1} / {lines.length}</Text>
         <Button
-          title={browse ? "跟随" : "全部"}
+          title={browse ? "回到当前" : "看全部"}
           action={() => onBrowse(!browse)}
           buttonStyle="bordered"
           buttonBorderShape="capsule"
@@ -306,7 +310,7 @@ function SyncedLyrics({
         />
       </HStack>
       <Text font="caption2" foregroundStyle="tertiaryLabel">
-        {browse ? "点某一句跳到对应时间。" : "跟随播放滚动。点前后句或拖进度条可跳转。"}
+        {browse ? `全部 ${lines.length} 句 · 高亮的是当前句，点任意一句跳到对应时间` : "跟随播放滚动。点前后句或拖进度条可跳转。"}
       </Text>
       {indices.map(i => (
         <LyricRow line={lines[i]} active={i === idx} onSeek={onSeek} />
@@ -431,6 +435,9 @@ function PodcastSession({
   // 播放器建好就能按播放，不等 onReadyToPlay：远程流式下它可能一直不触发
   // （v2.5.8 实测在线模式按钮恒灰），而 AVPlayer 自己会边缓冲边起播。
   const [canPlay, setCanPlay] = useState(false)
+  const [rate, setRate] = useState<number>(1)
+  // 诊断信息默认收起：它是调试脚手架，不该盖过播放控件
+  const [showDiag, setShowDiag] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [browse, setBrowse] = useState(false)
   const [sessionInfo, setSessionInfo] = useState("—")
@@ -451,6 +458,9 @@ function PodcastSession({
   const buildCount = useRef(0)
   const pollRef = useRef<any>(null)
   const pollingFor = useRef<AVPlayer | null>(null)
+  // seek 之后这个时间点之前不回写 playhead。AVPlayer 的 seek 是异步的，
+  // 刚 seek 完读回来往往还是旧值 —— 拖动中每 500ms 被覆盖一次，滑块会在手指下往回跳。
+  const seekGuard = useRef(0)
   const watchdogRef = useRef<any>(null)
   const wantPlay = useRef(false)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
@@ -523,7 +533,9 @@ function PodcastSession({
     const player = pollingFor.current
     if (player == null || playerRef.current !== player) return
     pollObs.setValue(pollObs.value + 1)
-    try { playhead.setValue(player.currentTime) } catch {}
+    if (Date.now() >= seekGuard.current) {
+      try { playhead.setValue(player.currentTime) } catch {}
+    }
     try { if (player.duration > 0) durationObs.setValue(player.duration) } catch {}
     try { tcObs.setValue(`${String(player.timeControlStatus)} 速率${String(player.rate)}`) } catch {}
     pollRef.current = setTimeout(pollOnce, 500)
@@ -579,7 +591,7 @@ function PodcastSession({
       return
     }
     // play() 不带参数时用的是 defaultRate；没见过它的默认值，显式写死 1
-    try { player.defaultRate = 1 } catch {}
+    try { player.defaultRate = rate } catch {}
     try { player.volume = 1 } catch {}
     player.onEnded = () => {
       wantPlay.current = false
@@ -632,8 +644,25 @@ function PodcastSession({
   }
 
   function seek(t: number) {
-    playhead.setValue(t)
-    if (playerRef.current != null) playerRef.current.currentTime = t
+    const d = durationObs.value
+    const clamped = Math.max(0, d > 0 ? Math.min(t, d) : t)
+    playhead.setValue(clamped)
+    seekGuard.current = Date.now() + 800
+    if (playerRef.current != null) playerRef.current.currentTime = clamped
+  }
+
+  function skip(delta: number) {
+    seek(playhead.value + delta)
+  }
+
+  // 倍速：play() 不带参数时吃 defaultRate；播放中要同时改 rate 才会立刻生效
+  function cycleRate() {
+    const next = RATES[(RATES.indexOf(rate) + 1) % RATES.length]
+    setRate(next)
+    const p = playerRef.current
+    if (p == null) return
+    try { p.defaultRate = next } catch {}
+    if (playing) { try { p.rate = next } catch {} }
   }
 
   // 切换音源：清掉播放态，让播放器 effect 用新的 source 重建
@@ -721,33 +750,18 @@ function PodcastSession({
     <VStack alignment="leading" spacing={14} frame={{ maxWidth: "infinity" }}>
       <VStack alignment="leading" spacing={10} padding={14}
         frame={{ maxWidth: "infinity" }}
-        background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
+        background={
+          <RoundedRectangle cornerRadius={14} fill="secondarySystemGroupedBackground"
+            stroke={{ shapeStyle: "separator", strokeStyle: { lineWidth: 1 } }} />
+        }>
         <HStack spacing={8}>
           <Text font="caption" fontWeight="semibold" foregroundStyle="accentColor">本集音频</Text>
           <Spacer />
-          <Button
-            title={srcMode === "remote" ? "音源：在线" : "音源：本地"}
-            action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
-            buttonStyle="bordered"
-            buttonBorderShape="capsule"
-            controlSize="small"
-          />
-          <Text font="caption2" foregroundStyle="tertiaryLabel">
+          <Text font="caption2" foregroundStyle="secondaryLabel">
             {formatClock(playhead.value)} / {formatClock(durationObs.value)}
           </Text>
         </HStack>
-        <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断①：音源 {srcMode === "remote" ? "在线" : "本地"} · 构建 {builds} · 轮询 {pollObs.value} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcObs.value} · 时长 {formatClock(durationObs.value)}
-        </Text>
-        <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断②：会话 {sessionInfo} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo}
-        </Text>
-        {stallMsg.value != null ? (
-          <Text font="caption2" foregroundStyle="systemOrange">卡住了：{stallMsg.value}</Text>
-        ) : null}
-        {sessionErr != null ? (
-          <Text font="caption2" foregroundStyle="systemOrange">会话配置报错：{sessionErr}</Text>
-        ) : null}
+
         <Slider
           disabled={durationObs.value <= 0}
           min={0}
@@ -755,14 +769,75 @@ function PodcastSession({
           value={playhead.value}
           onChanged={value => seek(value)}
         />
-        <Button
-          disabled={!canPlay}
-          title={playing ? "暂停" : "播放本集"}
-          systemImage={playing ? "pause.fill" : "play.fill"}
-          action={playing ? pause : play}
-          buttonStyle={playing ? "borderedProminent" : "bordered"}
-          buttonBorderShape="capsule"
-        />
+
+        {/* 主控件排一行：快退 · 播放 · 快进 · 倍速 */}
+        <HStack spacing={8}>
+          <Button
+            disabled={!canPlay}
+            title={`−${SKIP_SECONDS}`}
+            action={() => skip(-SKIP_SECONDS)}
+            buttonStyle="bordered"
+            buttonBorderShape="capsule"
+          />
+          <Button
+            disabled={!canPlay}
+            title={playing ? "暂停" : "播放"}
+            systemImage={playing ? "pause.fill" : "play.fill"}
+            action={playing ? pause : play}
+            buttonStyle="borderedProminent"
+            buttonBorderShape="capsule"
+            frame={{ maxWidth: "infinity" }}
+          />
+          <Button
+            disabled={!canPlay}
+            title={`+${SKIP_SECONDS}`}
+            action={() => skip(SKIP_SECONDS)}
+            buttonStyle="bordered"
+            buttonBorderShape="capsule"
+          />
+          <Button
+            disabled={!canPlay}
+            title={`${rate}×`}
+            action={cycleRate}
+            buttonStyle="bordered"
+            buttonBorderShape="capsule"
+          />
+        </HStack>
+
+        {/* 工具行：次要功能压到小字号 */}
+        <HStack spacing={10}>
+          <Button
+            title={srcMode === "remote" ? "音源：在线" : "音源：本地"}
+            action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
+            buttonStyle="borderless"
+            controlSize="small"
+          />
+          <Spacer />
+          <Button
+            title={showDiag ? "隐藏诊断" : "诊断"}
+            action={() => setShowDiag(!showDiag)}
+            buttonStyle="borderless"
+            controlSize="small"
+          />
+        </HStack>
+
+        {stallMsg.value != null ? (
+          <Text font="caption2" foregroundStyle="systemOrange">卡住了：{stallMsg.value}</Text>
+        ) : null}
+
+        {showDiag ? (
+          <VStack alignment="leading" spacing={4}>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">
+              构建 {builds} · 轮询 {pollObs.value} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcObs.value}
+            </Text>
+            <Text font="caption2" foregroundStyle="tertiaryLabel">
+              会话 {sessionInfo} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo}
+            </Text>
+            {sessionErr != null ? (
+              <Text font="caption2" foregroundStyle="systemOrange">会话配置报错：{sessionErr}</Text>
+            ) : null}
+          </VStack>
+        ) : null}
       </VStack>
 
       {children}
