@@ -1,5 +1,6 @@
 import {
-  Button, HStack, Link, Path, RoundedRectangle, Script, ScrollView, Slider, Spacer, Text, VStack,
+  Button, HStack, Link, Path, ProgressView, RoundedRectangle, Script, ScrollView, Slider, Spacer,
+  Text, VStack,
   useEffect, useRef, useState,
 } from "scripting"
 
@@ -280,6 +281,30 @@ function SyncedLyrics({
   )
 }
 
+// ── 音频缓存与下载 ─────────────────────────────────────────────────
+// mp3 不进仓库 —— 仓库同步体积直接决定手机端 remoteResource 拉取成败。
+// 音频托管在 Cloudflare R2（键与仓库内相对路径一致：audio/renna/NN.mp3），
+// 首次收听某集时下载一次，缓存到 documentsDirectory —— 脚本更新不触碰这个目录。
+
+const AUDIO_BASE = "https://audio.asylum.icu/"
+const AUDIO_CACHE_ROOT = "ai-flashcards-audio"
+
+function cachedAudioPath(relativePath: string): string {
+  return Path.join(FileManager.documentsDirectory, AUDIO_CACHE_ROOT, relativePath)
+}
+
+async function downloadEpisodeAudio(relativePath: string): Promise<string> {
+  const dest = cachedAudioPath(relativePath)
+  const dir = dest.substring(0, dest.lastIndexOf("/"))
+  FileManager.createDirectorySync(dir, true)
+  const resp = await fetch(AUDIO_BASE + relativePath)
+  if (!resp.ok) throw new Error("HTTP " + resp.status)
+  const buf = await resp.arrayBuffer()
+  if (buf.byteLength === 0) throw new Error("下载内容为空")
+  FileManager.writeAsBytes(dest, new Uint8Array(buf))
+  return dest
+}
+
 function PodcastSession({
   episode, speakers, showLyrics, children,
 }: {
@@ -289,25 +314,51 @@ function PodcastSession({
   children?: any
 }) {
   const relativePath = episode.audio
-  const filePath = Path.join(Script.directory, relativePath)
-  const exists = FileManager.existsSync(filePath)
+  const cachedPath = cachedAudioPath(relativePath)
+  // phase: downloading 拉取中 / ready 本地已就绪 / error 下载失败
+  const [phase, setPhase] = useState<"downloading" | "ready" | "error">(
+    FileManager.existsSync(cachedPath) ? "ready" : "downloading",
+  )
+  const [audioPath, setAudioPath] = useState<string | null>(
+    FileManager.existsSync(cachedPath) ? cachedPath : null,
+  )
+  const [attempt, setAttempt] = useState(0)
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const [browse, setBrowse] = useState(false)
   const playerRef = useRef<AVPlayer | null>(null)
+  const dlSeq = useRef(0)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
+
+  // 首次进入：本地没有缓存就自动下载（只一次；失败可重试）。
+  // 不用 cleanup 返回值，用递增序号丢弃过期响应（check.py 的 Hooks 扫描也认这种写法）。
+  useEffect(() => {
+    if (audioPath != null) return
+    setPhase("downloading")
+    const seq = ++dlSeq.current
+    downloadEpisodeAudio(relativePath)
+      .then((p) => {
+        if (dlSeq.current !== seq) return
+        setAudioPath(p)
+        setPhase("ready")
+      })
+      .catch((e) => {
+        console.error("音频下载失败：", e)
+        if (dlSeq.current === seq) setPhase("error")
+      })
+  }, [audioPath, relativePath, attempt])
 
   useEffect(() => {
     setBrowse(false)
     setCurrent(0)
     setPlaying(false)
     setReady(false)
-    if (!exists) return
+    if (audioPath == null) return
     ensureAudioSession()
     const player = new AVPlayer()
-    player.setSource(filePath)
+    player.setSource(audioPath)
     player.onReadyToPlay = () => {
       setReady(true)
       setDuration(player.duration)
@@ -327,7 +378,7 @@ function PodcastSession({
       if (activePlayer === player) activePlayer = null
       playerRef.current = null
     }
-  }, [filePath, exists])
+  }, [audioPath])
 
   function play() {
     const p = playerRef.current
@@ -350,11 +401,27 @@ function PodcastSession({
     if (playerRef.current != null) playerRef.current.currentTime = t
   }
 
-  if (!exists) {
+  if (audioPath == null && phase !== "error") {
     return (
-      <Text font="footnote" foregroundStyle="tertiaryLabel">
-        本机没有这一集的音频文件。重新导入脚本后再试。
-      </Text>
+      <VStack spacing={8} padding={14} frame={{ maxWidth: "infinity" }}
+        background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
+        <ProgressView />
+        <Text font="footnote" foregroundStyle="secondaryLabel">
+          首次收听需要下载这一集的音频（约 3~5 MB），只下载一次。
+        </Text>
+      </VStack>
+    )
+  }
+
+  if (phase === "error") {
+    return (
+      <VStack spacing={8} padding={14} frame={{ maxWidth: "infinity" }}
+        background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
+        <Text font="footnote" foregroundStyle="secondaryLabel">
+          音频下载失败，请检查网络后重试。
+        </Text>
+        <Button title="重试" buttonStyle="bordered" action={() => setAttempt(attempt + 1)} />
+      </VStack>
     )
   }
 

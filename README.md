@@ -107,14 +107,23 @@
 
 ## Agent 面试课（播客）
 
-Agent 专题 16 道题被改写成双人播客课《Agent 面试课》：仁菜主理，桑多涅以面试官视角拆题。音频用 Fish Audio `s2.1-pro-free` 合成，mp3 放在 `audio/renna/`。播放器固定在原文页顶部，下面可切「歌词 / 原文」。歌词按 `audio/renna/*.lrc` 时间轴跟随播放滚动，点某一句或拖进度条可跳转。
+Agent 专题 16 道题被改写成双人播客课《Agent 面试课》：仁菜主理，桑多涅以面试官视角拆题。播放器固定在原文页顶部，下面可切「歌词 / 原文」。歌词按 `audio/renna/*.lrc` 时间轴跟随播放滚动，点某一句或拖进度条可跳转。
+
+**mp3 不在本仓库**（仓库体积直接决定手机 remoteResource 拉取成败），托管在 Cloudflare R2 并绑定 `audio.asylum.icu`，键与仓库内路径一致（`audio/renna/NN.mp3`）。App 在首次收听某集时自动下载（约 3~5 MB / 集），缓存到 `documentsDirectory/ai-flashcards-audio/`，只下一次；下载失败可点「重试」。
 
 入口：原文 Tab 里标了「播客课 · 含讲稿」的篇目、题库分组的「听课 · 原文」、复习翻面后的「听课」。
 
-重新生成（仓库根目录，`.env` 里要有 `FISH_KEY`）：
+重新生成讲稿与音频（工具在 **dev 分支**，`.env` 里要有 `FISH_KEY`；dev 分克的同名 README 有完整说明）：
 
 ```
 .venv/bin/python dev/gen_podcast_renna.py
+```
+
+生成后把 mp3 传 R2（仓库根目录，需 Cloudflare 授权）：
+
+```
+XDG_CONFIG_HOME=<wrangler 配置目录> npx wrangler r2 object put \
+  "ai-flashcards-audio/audio/renna/01.mp3" --file ai-flashcards/audio/renna/01.mp3
 ```
 
 ## 内容出处与署名

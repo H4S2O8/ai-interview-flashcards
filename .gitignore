@@ -8,5 +8,11 @@
 # Python
 __pycache__/
 
-# TTS 分句缓存（体积大，不进仓库）
-dev/.tts-cache/
+# 播客音频不进仓库（托管在 Cloudflare R2，App 首次收听时下载缓存）
+ai-flashcards/audio/renna/*.mp3
+
+# wrangler 本地模拟状态（r2 object 不带 --remote 会写进 CWD 的 .wrangler/）
+.wrangler/
+
+# dev 资料只存在于 dev 分支；若在 master 工作区出现（比如其他会话写到这），一律不入库
+dev/
