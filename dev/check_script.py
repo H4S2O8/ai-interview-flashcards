@@ -65,8 +65,9 @@ def main():
         if v: fail.append(f"{k} 出现 {v} 次")
     intent = [w for w in ["听完这一集","不用看原文","听众","这档节目","你口述一下","观众","本期节目"] if w in body]
     if intent: fail.append(f"台词含制作意图：{intent}")
-    if not texts[-1].endswith("我们下集见。") and not texts[-1].endswith("我们下季见！"):
-        fail.append("结尾缺少节目惯例句")
+    # 定式是仁菜说「我们下集见」，桑多涅再补最后一句 —— 所以看结尾三轮
+    if not any("我们下集见" in t or "我们下季见" in t for t in texts[-3:]):
+        fail.append("结尾三轮里没有节目惯例句")
 
     # 2. 人味（手册 §2.5）
     warm = {
