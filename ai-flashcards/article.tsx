@@ -229,6 +229,25 @@ async function ensureAudioSession(): Promise<string | null> {
   return lastErr
 }
 
+/** 把会话「最后真正落到哪一档」读回来。
+ *  之前只知道 setCategory 有没有抛错，不知道生效的是什么 ——
+ *  而 category 不是 playback 时，iOS 默认的 soloAmbient 会被静音拨片直接掐掉声音，
+ *  播放器却照样报 playing。这正是「状态=2 但无声」的经典成因。 */
+async function describeAudioSession(): Promise<string> {
+  try {
+    const cat = await SharedAudioSession.category
+    const opts = await SharedAudioSession.categoryOptions
+    const optText = Array.isArray(opts) ? (opts.length > 0 ? opts.join("+") : "无选项") : String(opts)
+    let other = ""
+    try {
+      if (await SharedAudioSession.isOtherAudioPlaying) other = " ·有其他音频"
+    } catch {}
+    return `${String(cat)}[${optText}]${other}`
+  } catch {
+    return "读不出"
+  }
+}
+
 function LyricRow({
   line, active, onSeek,
 }: {
@@ -413,8 +432,17 @@ function PodcastSession({
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const [browse, setBrowse] = useState(false)
+  const [sessionInfo, setSessionInfo] = useState("—")
+  const [builds, setBuilds] = useState(0)
+  const [tick, setTick] = useState(0)
   const playerRef = useRef<AVPlayer | null>(null)
   const dlSeq = useRef(0)
+  const builtFor = useRef<string | null>(null)
+  const buildCount = useRef(0)
+  const pollCount = useRef(0)
+  const pollRef = useRef<any>(null)
+  const watchdogRef = useRef<any>(null)
+  const wantPlay = useRef(false)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
 
   const source = srcMode === "remote" ? remoteUrl : audioPath
@@ -441,20 +469,79 @@ function PodcastSession({
       })
   }, [srcMode, audioPath, relativePath, attempt])
 
+  // 播放器只为每个 source 建一次，判重靠 ref 而不是靠 deps。
+  // 这个框架的 effect 重跑语义没验证过，而「effect 反复重跑 → cleanup 里 dispose →
+  // 立刻重建」正好能造出「就绪=是 / 播放中=是 / 状态=2 / 时间恒 0 / 无声」这一整套症状：
+  // 每个实例都活不过几十毫秒。诊断行的「构建」就是来证伪它的 —— 正常应该恒等于 1。
   useEffect(() => {
-    setBrowse(false)
-    setCurrent(0)
-    setPlaying(false)
-    setReady(false)
     if (source == null) return
-    ensureAudioSession()
-    setHeadInfo(srcMode === "local" ? fileHeadText(source) : "在线不适用")
+    if (builtFor.current === source && playerRef.current != null) return
+    builtFor.current = source
+    void buildPlayer(source)
+  }, [source])
+
+  // 收摊只挂在 [] 上：不能放进 [source] 的 cleanup，否则 effect 一重跑就把活着的播放器 dispose 掉
+  useEffect(() => {
+    return () => {
+      stopPolling()
+      teardownPlayer()
+    }
+  }, [])
+
+  function stopPolling() {
+    if (pollRef.current != null) clearInterval(pollRef.current)
+    pollRef.current = null
+    if (watchdogRef.current != null) clearTimeout(watchdogRef.current)
+    watchdogRef.current = null
+  }
+
+  function teardownPlayer() {
+    const p = playerRef.current
+    if (p != null) {
+      try { p.pause() } catch {}
+      try { p.dispose() } catch {}
+      if (activePlayer === p) activePlayer = null
+    }
+    playerRef.current = null
+  }
+
+  // 诊断全部改成「直接问播放器」。onTimeControlStatusChanged 只在状态变化时触发一次，
+  // 播放器悄悄停下来它不会再报 —— 之前那个「状态=2」很可能早就是陈的了。
+  function startPolling(player: AVPlayer) {
+    stopPolling()
+    pollRef.current = setInterval(() => {
+      if (playerRef.current !== player) return
+      pollCount.current += 1
+      setTick(pollCount.current)
+      try { setCurrent(player.currentTime) } catch {}
+      try { if (player.duration > 0) setDuration(player.duration) } catch {}
+      try { setTcStatus(`${String(player.timeControlStatus)} 速率${String(player.rate)}`) } catch {}
+    }, 500)
+  }
+
+  async function buildPlayer(src: string) {
+    teardownPlayer()
+    stopPolling()
+    buildCount.current += 1
+    setBuilds(buildCount.current)
+    setReady(false)
+    setPlaying(false)
+    setCurrent(0)
+    setDuration(0)
+    setBrowse(false)
+    setHeadInfo(srcMode === "local" ? fileHeadText(src) : "在线不适用")
+    // 文档里每个例子都是「先配好并激活会话，再 setSource」。
+    // 之前 ensureAudioSession() 不 await 就往下走，setSource 跑在会话配好之前。
+    setSessionErr(await ensureAudioSession())
+    setSessionInfo(await describeAudioSession())
     const player = new AVPlayer()
     let isReady = false
     player.onReadyToPlay = () => {
       isReady = true
       setReady(true)
       setDuration(player.duration)
+      // 文档里 play() 一律写在 onReadyToPlay 里。用户已经按过播放就在这兑现。
+      if (wantPlay.current) void startPlayback(player)
     }
     player.onTimeControlStatusChanged = (status: string) => {
       setTcStatus(String(status))
@@ -464,22 +551,25 @@ function PodcastSession({
       setErrMsg(String(message))
       setPhase("error")
     }
-    if (!player.setSource(source)) {
+    if (!player.setSource(src)) {
       setErrMsg(srcMode === "remote"
-        ? `打开在线音频失败：${source}`
-        : `打开本地音频失败（可能缓存损坏）：${source}`)
+        ? `打开在线音频失败：${src}`
+        : `打开本地音频失败（可能缓存损坏）：${src}`)
       setPhase("error")
       return
     }
-    // 音量显式拉满：v2.5.4「状态=playing 却没声」时它是个没排除过的嫌疑
+    // play() 不带参数时用的是 defaultRate；没见过它的默认值，显式写死 1
+    try { player.defaultRate = 1 } catch {}
     try { player.volume = 1 } catch {}
     player.onEnded = () => {
+      wantPlay.current = false
       setPlaying(false)
     }
     playerRef.current = player
+    startPolling(player)
     // 兜底：一直不进入可播放状态就报错，别让用户对着 0:00 干等
     const watchdogMs = srcMode === "remote" ? 25000 : 10000
-    const watchdog = setTimeout(() => {
+    watchdogRef.current = setTimeout(() => {
       if (!isReady && playerRef.current === player) {
         setErrMsg(srcMode === "remote"
           ? `${watchdogMs / 1000} 秒未进入可播放状态，网络太慢或音源不可达`
@@ -487,43 +577,34 @@ function PodcastSession({
         setPhase("error")
       }
     }, watchdogMs)
-    const timerId = setInterval(() => {
-      const p = playerRef.current
-      if (p != null) setCurrent(p.currentTime)
-    }, 200)
-    return () => {
-      clearTimeout(watchdog)
-      clearInterval(timerId)
-      try { player.pause() } catch {}
-      try { player.dispose() } catch {}
-      if (activePlayer === player) activePlayer = null
-      playerRef.current = null
-    }
-  }, [source])
+  }
 
-  async function play() {
-    const p = playerRef.current
-    if (p == null) return
+  async function startPlayback(p: AVPlayer) {
     if (activePlayer != null && activePlayer !== p) {
       try { activePlayer.pause() } catch {}
     }
     activePlayer = p
-    const sessionErr = await ensureAudioSession()
-    // 会话配置失败不阻断播放——系统默认会话也能出声；错误挂诊断行
-    setSessionErr(sessionErr)
     const started = p.play()
     if (!started) {
-      setErrMsg(
-        "播放器拒绝开始播放（play() 返回 false）"
-        + (sessionErr != null ? `；会话警告：${sessionErr}` : ""),
-      )
+      setErrMsg("播放器拒绝开始播放（play() 返回 false）")
       setPhase("error")
       return
     }
     setPlaying(true)
   }
 
+  async function play() {
+    wantPlay.current = true
+    const p = playerRef.current
+    // 还没就绪也不算错：onReadyToPlay 会照着 wantPlay 补上
+    if (p == null) return
+    setSessionErr(await ensureAudioSession())
+    setSessionInfo(await describeAudioSession())
+    await startPlayback(p)
+  }
+
   function pause() {
+    wantPlay.current = false
     playerRef.current?.pause()
     setPlaying(false)
   }
@@ -544,6 +625,8 @@ function PodcastSession({
     setTcStatus("—")
     setHeadInfo("—")
     setPhase(mode === "local" && audioPath == null ? "downloading" : "ready")
+    builtFor.current = null
+    wantPlay.current = false
     setSrcMode(mode)
   }
 
@@ -560,6 +643,9 @@ function PodcastSession({
     setAudioPath(null)
     setSrcMode("local")
     setPhase("downloading")
+    // 重下之后路径是同一个，不清掉判重标记就不会重建播放器
+    builtFor.current = null
+    wantPlay.current = false
     setAttempt(attempt + 1)
   }
 
@@ -625,7 +711,16 @@ function PodcastSession({
           </Text>
         </HStack>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断：音源 {srcMode === "remote" ? "在线" : "本地"} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
+          诊断①：音源 {srcMode === "remote" ? "在线" : "本地"} · 构建 {builds} · 轮询 {tick} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
+        </Text>
+        <Text font="caption2" foregroundStyle="tertiaryLabel">
+          诊断②：会话 {sessionInfo} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo}
+        </Text>
+        {sessionErr != null ? (
+          <Text font="caption2" foregroundStyle="systemOrange">会话配置报错：{sessionErr}</Text>
+        ) : null}
+        <Text font="caption2" foregroundStyle="tertiaryLabel">
+          没声音先看诊断②的「会话」：不是 playback 开头就会被手机侧面的静音拨片掐掉，把拨片拨到响铃位再试。
         </Text>
         <Slider
           disabled={!ready}
