@@ -56,7 +56,15 @@ def main():
     if not eps:
         sys.exit(f"json 里没有 deck {args.deck}")
 
+    diffs = []
+    for k in sorted(eps, key=int):
+        f = ROOT / "ai-flashcards" / eps[k]["audio"]
+        if f.exists():
+            diffs.append(eps[k].get("ms", 0) - mp3_ms(f))
+    median_diff = sorted(diffs)[len(diffs) // 2] if diffs else 0
+
     bad = []
+    print(f"  本季偏移中位数 {median_diff}ms（编码器填充，非漂移）\n")
     print(f"{'集':>4} {'json':>9} {'mp3':>9} {'差':>7} {'lrc':>5} {'轮':>4} {'末条占比':>8}"
           + ("  远端" if args.remote else ""))
     for k in sorted(eps, key=int):
@@ -73,7 +81,14 @@ def main():
         row = (f"{k:>4} {e.get('ms',0)/1000:>8.1f}s {real/1000:>8.1f}s {diff:>6}ms "
                f"{len(ts):>5} {len(e['turns']):>4} {ratio:>7.1%}")
         problems = []
-        if abs(diff) > 50: problems.append("时间轴差>50ms")
+        # 不用固定阈值。json ms 与 mp3 实测之间有一个恒定的负偏移（LAME 编码器填充），
+        # 四季实测都是 -51~-26ms、均值约 -40ms，且与时长/轮数无相关（相关系数 -0.11/+0.18）——
+        # 也就是说它不是累积漂移。S1/S2 已上线的集子里同样有 -51ms。
+        # 真正要抓的是「偏离本季自身中位数太远」，那才说明这一集出了事。
+        if abs(diff - median_diff) > 40:
+            problems.append(f"偏移 {diff}ms 偏离本季中位数 {median_diff}ms 过远")
+        if abs(diff) > 150:
+            problems.append(f"偏移 {diff}ms 绝对值过大")
         if len(ts) != len(e["turns"]): problems.append("lrc 行数≠轮数")
         if not 0.90 < ratio < 1.0: problems.append("末条时间戳异常")
         if args.remote:
