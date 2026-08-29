@@ -11,7 +11,7 @@ GLOBALS = {
     "Promise","Set","Map","setTimeout","clearTimeout","setInterval","clearInterval",
     "LanguageModelSession","Crypto","UUID","fetch","Response","Headers",
     "AbortController","AbortSignal","TextDecoder","URL","Symbol",
-    "AVPlayer","SharedAudioSession",
+    "AVPlayer","SharedAudioSession","MediaPlayer",
 }
 
 fail = 0
