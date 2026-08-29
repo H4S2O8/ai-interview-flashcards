@@ -201,21 +201,32 @@ function windowIndices(idx: number, n: number): number[] {
 
 async function ensureAudioSession(): Promise<string | null> {
   if (audioSessionReady) return null
-  try {
-    await SharedAudioSession.setCategory(
-      "playback",
-      ["mixWithOthers", "allowAirPlay", "allowBluetooth", "allowBluetoothA2DP"],
-    )
+  // OSStatus -50 = 参数不合法（真机实测某 option 被拒）。从全配置逐级降到最小配置，成功一个就锁定。
+  const attempts: Array<[string, string[]]> = [
+    ["playback", ["mixWithOthers", "allowBluetooth", "allowBluetoothA2DP", "allowAirPlay"]],
+    ["playback", ["mixWithOthers"]],
+    ["playback", []],
+  ]
+  let lastErr: string | null = null
+  for (const [category, options] of attempts) {
     try {
-      // 文档未收录的 API：存在就调用，不存在也不能拖垮会话激活（真机疑似 TypeError，曾被静默吞掉）
-      await SharedAudioSession.setMode("spokenAudio")
-    } catch {}
-    await SharedAudioSession.setActive(true)
-    audioSessionReady = true
-    return null
-  } catch (e) {
-    return e instanceof Error ? e.message : String(e)
+      await SharedAudioSession.setCategory(category, options)
+      try {
+        // 文档收录但个别平台可能缺失：失败不能拖垮会话激活
+        await SharedAudioSession.setMode("spokenAudio")
+      } catch {}
+      await SharedAudioSession.setActive(true)
+      audioSessionReady = true
+      return null
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e)
+    }
   }
+  // 全部失败：不再配置会话——系统默认会话也能播放（最多受静音键影响）
+  try {
+    await SharedAudioSession.setActive(true)
+  } catch {}
+  return lastErr
 }
 
 function LyricRow({
@@ -348,6 +359,7 @@ function PodcastSession({
   )
   const [attempt, setAttempt] = useState(0)
   const [errMsg, setErrMsg] = useState<string | null>(null)
+  const [sessionErr, setSessionErr] = useState<string | null>(null)
   const [tcStatus, setTcStatus] = useState("—")
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
@@ -439,14 +451,14 @@ function PodcastSession({
     }
     activePlayer = p
     const sessionErr = await ensureAudioSession()
-    if (sessionErr != null) {
-      setErrMsg(`音频会话初始化失败：${sessionErr}`)
-      setPhase("error")
-      return
-    }
+    // 会话配置失败不阻断播放——系统默认会话也能出声；错误挂诊断行
+    setSessionErr(sessionErr)
     const started = p.play()
     if (!started) {
-      setErrMsg("播放器拒绝开始播放（play() 返回 false）")
+      setErrMsg(
+        "播放器拒绝开始播放（play() 返回 false）"
+        + (sessionErr != null ? `；会话警告：${sessionErr}` : ""),
+      )
       setPhase("error")
       return
     }
@@ -469,11 +481,19 @@ function PodcastSession({
       try { FileManager.removeSync(audioPath) } catch {}
     }
     setErrMsg(null)
+    setSessionErr(null)
     setReady(false)
     setCurrent(0)
     setDuration(0)
     setAudioPath(null)
     setAttempt(attempt + 1)
+  }
+
+  // 不清缓存，只重试启动播放（player 还活着，无需重建）
+  function retryPlayOnly() {
+    setErrMsg(null)
+    setPhase("ready")
+    void play()
   }
 
   if (audioPath == null && phase !== "error") {
@@ -494,10 +514,14 @@ function PodcastSession({
         background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
         <Text font="footnote" foregroundStyle="secondaryLabel">音频下载或播放出错了</Text>
         {errMsg != null ? (
-          <Text font="caption2" foregroundStyle="tertiaryLabel">{errMsg}</Text>
+          <Text font="body" foregroundStyle="primaryLabel">{errMsg}</Text>
         ) : null}
-        <Button title="清缓存并重试" buttonStyle="bordered" buttonBorderShape="capsule"
-          action={retryWithCleanCache} />
+        <HStack spacing={8}>
+          <Button title="仅重试播放" buttonStyle="bordered" buttonBorderShape="capsule"
+            action={retryPlayOnly} frame={{ maxWidth: "infinity" }} />
+          <Button title="清缓存重下" buttonStyle="bordered" buttonBorderShape="capsule"
+            action={retryWithCleanCache} frame={{ maxWidth: "infinity" }} />
+        </HStack>
       </VStack>
     )
   }
