@@ -19,6 +19,17 @@ BANDS = {"语气词轮": (0.51, 0.93), "感叹号": (3, 15), "问号": (10, 31),
          "非知识轮": (0.50, 1.00), "短轮": (0.08, 0.45)}
 
 
+def bare_digits(text):
+    """孤立的阿拉伯数字（违反手册 §1.4）。紧邻拉丁字母的放行 —— A2A / R1 / BM25
+    这类技术专名在 S1/S2 生产讲稿里是既成写法。"""
+    out = []
+    for m in re.finditer(r"\d+", text):
+        before = text[m.start() - 1] if m.start() else ""
+        after = text[m.end()] if m.end() < len(text) else ""
+        if not (before.isalpha() and before.isascii()) and not (after.isalpha() and after.isascii()):
+            out.append(m.group())
+    return out
+
 def turns(path):
     out = []
     for line in pathlib.Path(path).read_text(encoding="utf-8").split("\n"):
@@ -59,7 +70,7 @@ def main():
     hard = {
         "半角双引号": body.count('"'),
         "反斜杠": body.count("\\"),
-        "阿拉伯数字": len(re.findall(r"[0-9]", body)),
+        "孤立阿拉伯数字": len(bare_digits(body)),
     }
     for k, v in hard.items():
         if v: fail.append(f"{k} 出现 {v} 次")
