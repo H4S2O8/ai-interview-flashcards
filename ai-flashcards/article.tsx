@@ -413,10 +413,11 @@ function PodcastSession({
   const relativePath = episode.audio
   const cachedPath = cachedAudioPath(relativePath)
   const remoteUrl = AUDIO_BASE + relativePath
-  // 音源：remote 直接把 R2 的 URL 交给 AVPlayer（setSource 支持远程 URL，Worker 支持 Range），
-  // local 走「下载到 documentsDirectory 再播本地文件」。默认 remote——本地那条
-  // fetch→Data→写盘→读回的通道在真机上连挂了 5 个版本，先绕开它把声音放出来。
-  const [srcMode, setSrcMode] = useState<"remote" | "local">("remote")
+  // 音源：local 下载到 documentsDirectory 再播本地文件（默认，下一次、之后离线可听）；
+  // remote 直接把 R2 的 URL 交给 AVPlayer（setSource 支持远程 URL，Worker 支持 Range）。
+  // v2.5.6 曾默认 remote 来绕开文件通道，结果证明文件通道一直是好的 —— 坏的是
+  // v2.5.5 的文件头校验和定时器渲染。本地实测可播，默认改回来。
+  const [srcMode, setSrcMode] = useState<"remote" | "local">("local")
   const [audioPath, setAudioPath] = useState<string | null>(() =>
     cachedFileOk(cachedPath) ? cachedPath : null,
   )
@@ -427,6 +428,9 @@ function PodcastSession({
   const [sessionErr, setSessionErr] = useState<string | null>(null)
   const [headInfo, setHeadInfo] = useState("—")
   const [ready, setReady] = useState(false)
+  // 播放器建好就能按播放，不等 onReadyToPlay：远程流式下它可能一直不触发
+  // （v2.5.8 实测在线模式按钮恒灰），而 AVPlayer 自己会边缓冲边起播。
+  const [canPlay, setCanPlay] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [browse, setBrowse] = useState(false)
   const [sessionInfo, setSessionInfo] = useState("—")
@@ -537,6 +541,7 @@ function PodcastSession({
     buildCount.current += 1
     setBuilds(buildCount.current)
     setReady(false)
+    setCanPlay(false)
     setPlaying(false)
     setBrowse(false)
     playhead.setValue(0)
@@ -581,6 +586,7 @@ function PodcastSession({
       setPlaying(false)
     }
     playerRef.current = player
+    setCanPlay(true)
     startPolling(player)
     // 兜底：一直不进入可播放状态就报错，别让用户对着 0:00 干等
     const watchdogMs = srcMode === "remote" ? 25000 : 10000
@@ -635,6 +641,7 @@ function PodcastSession({
     setErrMsg(null)
     setSessionErr(null)
     setReady(false)
+    setCanPlay(false)
     setPlaying(false)
     setHeadInfo("—")
     playhead.setValue(0)
@@ -655,6 +662,7 @@ function PodcastSession({
     setErrMsg(null)
     setSessionErr(null)
     setReady(false)
+    setCanPlay(false)
     playhead.setValue(0)
     durationObs.setValue(0)
     stallMsg.setValue(null)
@@ -740,18 +748,15 @@ function PodcastSession({
         {sessionErr != null ? (
           <Text font="caption2" foregroundStyle="systemOrange">会话配置报错：{sessionErr}</Text>
         ) : null}
-        <Text font="caption2" foregroundStyle="tertiaryLabel">
-          没声音先看诊断②的「会话」：不是 playback 开头就会被手机侧面的静音拨片掐掉，把拨片拨到响铃位再试。
-        </Text>
         <Slider
-          disabled={!ready}
+          disabled={durationObs.value <= 0}
           min={0}
           max={durationObs.value > 0 ? durationObs.value : 1}
           value={playhead.value}
           onChanged={value => seek(value)}
         />
         <Button
-          disabled={!ready}
+          disabled={!canPlay}
           title={playing ? "暂停" : "播放本集"}
           systemImage={playing ? "pause.fill" : "play.fill"}
           action={playing ? pause : play}
