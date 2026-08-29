@@ -308,15 +308,16 @@ function cachedAudioPath(relativePath: string): string {
   return Path.join(FileManager.documentsDirectory, AUDIO_CACHE_ROOT, relativePath)
 }
 
-/** 缓存文件是否像回事：有效的一集至少 1MB，且文件头是 mp3（ID3 或 0xFF 帧同步）——旧版本可能写坏过 */
+/** 缓存文件是否像回事：有效的一集至少 1MB；文件头「明确不是 mp3」才判坏。
+ *  头读不出来一律放行 —— 读通道本身不可靠（见 fileHeadHex 注释），
+ *  v2.5.5 就是把「读不出」当成「不是 mp3」，导致好文件被反复判死、无限重下。 */
 function cachedFileOk(p: string): boolean {
   try {
     if (FileManager.statSync(p).size <= 100000) return false
-    const bytes = FileManager.readAsBytesSync(p)
-    return (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || bytes[0] === 0xff
   } catch {
     return false
   }
+  return headIsMp3(fileHeadHex(p)) !== false
 }
 
 function cacheSizeText(p: string | null): string {
@@ -342,27 +343,44 @@ async function downloadEpisodeAudio(relativePath: string): Promise<string> {
   FileManager.writeAsDataSync(dest, data)
   const written = FileManager.statSync(dest).size
   if (written !== buf.byteLength) throw new Error(`写入不完整（${written}/${buf.byteLength} 字节）`)
-  const head = FileManager.readAsBytesSync(dest).slice(0, 3)
-  const isMp3 = (head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33) || head[0] === 0xff
-  if (!isMp3) throw new Error(`文件头异常（${bytesToHex(head)}，不是 mp3）——下载或写盘通道有问题`)
+  // 字节数对得上就算落盘成功。文件头只在「确实读出来了、而且不是 mp3」时才判失败：
+  // 读不出头不代表文件坏，不能拿它否掉一次大小已经核对过的下载。
+  const hex = fileHeadHex(dest)
+  if (headIsMp3(hex) === false) {
+    throw new Error(`落盘后文件头是 ${hex}，不是 mp3 —— 写盘通道有问题，请切到「在线播放」`)
+  }
   return dest
 }
 
-function bytesToHex(bytes: Uint8Array | number[]): string {
-  let hex = ""
-  for (let i = 0; i < Math.min(3, bytes.length); i++) {
-    hex += (bytes[i] as number).toString(16).padStart(2, "0") + " "
+/** 文件头 4 字节的十六进制；读不出来返回 null。
+ *  只走 Data（fromFile → slice → toHexString），不碰 Uint8Array：
+ *  真机上 FileManager.readAsBytesSync(...) 的返回值在 JS 侧取不到 length/下标，
+ *  v2.5.5 报的「文件头异常（，不是 mp3）」括号是空的，就是栽在这条通道上。 */
+function fileHeadHex(p: string): string | null {
+  try {
+    const d = Data.fromFile(p)
+    if (d == null || d.size < 4) return null
+    const hex = d.slice(0, 4).toHexString()
+    if (typeof hex !== "string") return null
+    const clean = hex.toLowerCase().replace(/[^0-9a-f]/g, "")
+    return clean.length >= 8 ? clean : null
+  } catch {
+    return null
   }
-  return hex.trim()
+}
+
+/** true = 是 mp3，false = 明确不是，null = 读不出（不能当成坏文件） */
+function headIsMp3(hex: string | null): boolean | null {
+  if (hex == null || hex.length < 6) return null
+  // 仁菜这批是裸帧同步 ff fb（LAME 的 Info 头在第一帧里），带 ID3 的也一并认
+  return hex.startsWith("494433") || hex.startsWith("ff")
 }
 
 function fileHeadText(p: string): string {
-  try {
-    const bytes = FileManager.readAsBytesSync(p)
-    return bytesToHex(bytes) + (((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || bytes[0] === 0xff) ? " ✓" : " ✗非mp3")
-  } catch {
-    return "读不了"
-  }
+  const hex = fileHeadHex(p)
+  if (hex == null) return "读不出"
+  const ok = headIsMp3(hex)
+  return hex + (ok === true ? " ✓" : ok === false ? " ✗非mp3" : " ?")
 }
 
 function PodcastSession({
@@ -375,13 +393,16 @@ function PodcastSession({
 }) {
   const relativePath = episode.audio
   const cachedPath = cachedAudioPath(relativePath)
-  // phase: downloading 拉取中 / ready 本地已就绪 / error 出错
+  const remoteUrl = AUDIO_BASE + relativePath
+  // 音源：remote 直接把 R2 的 URL 交给 AVPlayer（setSource 支持远程 URL，Worker 支持 Range），
+  // local 走「下载到 documentsDirectory 再播本地文件」。默认 remote——本地那条
+  // fetch→Data→写盘→读回的通道在真机上连挂了 5 个版本，先绕开它把声音放出来。
+  const [srcMode, setSrcMode] = useState<"remote" | "local">("remote")
   const [audioPath, setAudioPath] = useState<string | null>(() =>
     cachedFileOk(cachedPath) ? cachedPath : null,
   )
-  const [phase, setPhase] = useState<"downloading" | "ready" | "error">(
-    audioPath != null ? "ready" : "downloading",
-  )
+  // phase: downloading 拉取中 / ready 已就绪 / error 出错
+  const [phase, setPhase] = useState<"downloading" | "ready" | "error">("ready")
   const [attempt, setAttempt] = useState(0)
   const [errMsg, setErrMsg] = useState<string | null>(null)
   const [sessionErr, setSessionErr] = useState<string | null>(null)
@@ -396,9 +417,12 @@ function PodcastSession({
   const dlSeq = useRef(0)
   const lyrics = loadLyrics(relativePath, episode, speakers.host.name, speakers.guest.name)
 
-  // 首次进入：本地没有缓存就自动下载（只一次；失败可重试）。
+  const source = srcMode === "remote" ? remoteUrl : audioPath
+
+  // 切到本地音源、且没有可用缓存时才下载（只一次；失败可重试）。
   // 不用 cleanup 返回值，用递增序号丢弃过期响应（check.py 的 Hooks 扫描也认这种写法）。
   useEffect(() => {
+    if (srcMode !== "local") return
     if (audioPath != null) return
     setPhase("downloading")
     const seq = ++dlSeq.current
@@ -415,16 +439,16 @@ function PodcastSession({
           setPhase("error")
         }
       })
-  }, [audioPath, relativePath, attempt])
+  }, [srcMode, audioPath, relativePath, attempt])
 
   useEffect(() => {
     setBrowse(false)
     setCurrent(0)
     setPlaying(false)
     setReady(false)
-    if (audioPath == null) return
+    if (source == null) return
     ensureAudioSession()
-    setHeadInfo(fileHeadText(audioPath))
+    setHeadInfo(srcMode === "local" ? fileHeadText(source) : "在线不适用")
     const player = new AVPlayer()
     let isReady = false
     player.onReadyToPlay = () => {
@@ -440,22 +464,29 @@ function PodcastSession({
       setErrMsg(String(message))
       setPhase("error")
     }
-    if (!player.setSource(audioPath)) {
-      setErrMsg(`打开本地音频失败（可能缓存损坏）：${audioPath}`)
+    if (!player.setSource(source)) {
+      setErrMsg(srcMode === "remote"
+        ? `打开在线音频失败：${source}`
+        : `打开本地音频失败（可能缓存损坏）：${source}`)
       setPhase("error")
       return
     }
+    // 音量显式拉满：v2.5.4「状态=playing 却没声」时它是个没排除过的嫌疑
+    try { player.volume = 1 } catch {}
     player.onEnded = () => {
       setPlaying(false)
     }
     playerRef.current = player
     // 兜底：一直不进入可播放状态就报错，别让用户对着 0:00 干等
+    const watchdogMs = srcMode === "remote" ? 25000 : 10000
     const watchdog = setTimeout(() => {
       if (!isReady && playerRef.current === player) {
-        setErrMsg("10 秒未进入可播放状态，文件可能损坏或格式异常")
+        setErrMsg(srcMode === "remote"
+          ? `${watchdogMs / 1000} 秒未进入可播放状态，网络太慢或音源不可达`
+          : `${watchdogMs / 1000} 秒未进入可播放状态，文件可能损坏或格式异常`)
         setPhase("error")
       }
-    }, 10000)
+    }, watchdogMs)
     const timerId = setInterval(() => {
       const p = playerRef.current
       if (p != null) setCurrent(p.currentTime)
@@ -468,7 +499,7 @@ function PodcastSession({
       if (activePlayer === player) activePlayer = null
       playerRef.current = null
     }
-  }, [audioPath])
+  }, [source])
 
   async function play() {
     const p = playerRef.current
@@ -502,6 +533,20 @@ function PodcastSession({
     if (playerRef.current != null) playerRef.current.currentTime = t
   }
 
+  // 切换音源：清掉播放态，让播放器 effect 用新的 source 重建
+  function switchSource(mode: "remote" | "local") {
+    setErrMsg(null)
+    setSessionErr(null)
+    setReady(false)
+    setPlaying(false)
+    setCurrent(0)
+    setDuration(0)
+    setTcStatus("—")
+    setHeadInfo("—")
+    setPhase(mode === "local" && audioPath == null ? "downloading" : "ready")
+    setSrcMode(mode)
+  }
+
   // 清掉本地缓存重新下载——错误多半来自损坏的缓存文件
   function retryWithCleanCache() {
     if (audioPath != null) {
@@ -513,6 +558,8 @@ function PodcastSession({
     setCurrent(0)
     setDuration(0)
     setAudioPath(null)
+    setSrcMode("local")
+    setPhase("downloading")
     setAttempt(attempt + 1)
   }
 
@@ -523,13 +570,13 @@ function PodcastSession({
     void play()
   }
 
-  if (audioPath == null && phase !== "error") {
+  if (source == null && phase !== "error") {
     return (
       <VStack spacing={8} padding={14} frame={{ maxWidth: "infinity" }}
         background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
         <ProgressView />
         <Text font="footnote" foregroundStyle="secondaryLabel">
-          首次收听需要下载这一集的音频（约 3~5 MB），只下载一次。
+          正在把这一集下载到本地（约 3~5 MB），只下载一次。不想等可以切回「音源：在线」。
         </Text>
       </VStack>
     )
@@ -546,9 +593,14 @@ function PodcastSession({
         <HStack spacing={8}>
           <Button title="仅重试播放" buttonStyle="bordered" buttonBorderShape="capsule"
             action={retryPlayOnly} frame={{ maxWidth: "infinity" }} />
-          <Button title="清缓存重下" buttonStyle="bordered" buttonBorderShape="capsule"
-            action={retryWithCleanCache} frame={{ maxWidth: "infinity" }} />
+          <Button
+            title={srcMode === "remote" ? "改用本地缓存" : "改用在线播放"}
+            buttonStyle="borderedProminent" buttonBorderShape="capsule"
+            action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
+            frame={{ maxWidth: "infinity" }} />
         </HStack>
+        <Button title="清缓存重下（本地）" buttonStyle="bordered" buttonBorderShape="capsule"
+          action={retryWithCleanCache} frame={{ maxWidth: "infinity" }} />
       </VStack>
     )
   }
@@ -561,12 +613,19 @@ function PodcastSession({
         <HStack spacing={8}>
           <Text font="caption" fontWeight="semibold" foregroundStyle="accentColor">本集音频</Text>
           <Spacer />
+          <Button
+            title={srcMode === "remote" ? "音源：在线" : "音源：本地"}
+            action={() => switchSource(srcMode === "remote" ? "local" : "remote")}
+            buttonStyle="bordered"
+            buttonBorderShape="capsule"
+            controlSize="small"
+          />
           <Text font="caption2" foregroundStyle="tertiaryLabel">
             {formatClock(current)} / {formatClock(duration)}
           </Text>
         </HStack>
         <Text font="caption2" foregroundStyle="tertiaryLabel">
-          诊断：缓存 {cacheSizeText(audioPath)} · 头 {headInfo} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
+          诊断：音源 {srcMode === "remote" ? "在线" : "本地"} · 缓存 {cacheSizeText(audioPath)} · 头 {headInfo} · 就绪 {ready ? "是" : "否"} · 播放中 {playing ? "是" : "否"} · 状态 {tcStatus} · 时长 {formatClock(duration)}
         </Text>
         <Slider
           disabled={!ready}
