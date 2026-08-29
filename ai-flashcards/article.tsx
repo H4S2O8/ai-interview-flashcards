@@ -302,6 +302,8 @@ async function downloadEpisodeAudio(relativePath: string): Promise<string> {
   const buf = await resp.arrayBuffer()
   if (buf.byteLength === 0) throw new Error("下载内容为空")
   FileManager.writeAsBytes(dest, new Uint8Array(buf))
+  const written = FileManager.statSync(dest).size
+  if (written !== buf.byteLength) throw new Error(`写入不完整（${written}/${buf.byteLength} 字节）`)
   return dest
 }
 
@@ -323,6 +325,7 @@ function PodcastSession({
     FileManager.existsSync(cachedPath) ? cachedPath : null,
   )
   const [attempt, setAttempt] = useState(0)
+  const [errMsg, setErrMsg] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -346,7 +349,10 @@ function PodcastSession({
       })
       .catch((e) => {
         console.error("音频下载失败：", e)
-        if (dlSeq.current === seq) setPhase("error")
+        if (dlSeq.current === seq) {
+          setErrMsg(e instanceof Error ? e.message : String(e))
+          setPhase("error")
+        }
       })
   }, [audioPath, relativePath, attempt])
 
@@ -358,20 +364,39 @@ function PodcastSession({
     if (audioPath == null) return
     ensureAudioSession()
     const player = new AVPlayer()
-    player.setSource(audioPath)
+    let isReady = false
     player.onReadyToPlay = () => {
+      isReady = true
       setReady(true)
       setDuration(player.duration)
+    }
+    player.onError = (message: string) => {
+      if (isReady) return
+      setErrMsg(String(message))
+      setPhase("error")
+    }
+    if (!player.setSource(audioPath)) {
+      setErrMsg(`打开本地音频失败（可能缓存损坏）：${audioPath}`)
+      setPhase("error")
+      return
     }
     player.onEnded = () => {
       setPlaying(false)
     }
     playerRef.current = player
+    // 兜底：一直不进入可播放状态就报错，别让用户对着 0:00 干等
+    const watchdog = setTimeout(() => {
+      if (!isReady && playerRef.current === player) {
+        setErrMsg("10 秒未进入可播放状态，文件可能损坏或格式异常")
+        setPhase("error")
+      }
+    }, 10000)
     const timerId = setInterval(() => {
       const p = playerRef.current
       if (p != null) setCurrent(p.currentTime)
     }, 200)
     return () => {
+      clearTimeout(watchdog)
       clearInterval(timerId)
       try { player.pause() } catch {}
       try { player.dispose() } catch {}
@@ -401,6 +426,19 @@ function PodcastSession({
     if (playerRef.current != null) playerRef.current.currentTime = t
   }
 
+  // 清掉本地缓存重新下载——错误多半来自损坏的缓存文件
+  function retryWithCleanCache() {
+    if (audioPath != null) {
+      try { FileManager.removeSync(audioPath) } catch {}
+    }
+    setErrMsg(null)
+    setReady(false)
+    setCurrent(0)
+    setDuration(0)
+    setAudioPath(null)
+    setAttempt(attempt + 1)
+  }
+
   if (audioPath == null && phase !== "error") {
     return (
       <VStack spacing={8} padding={14} frame={{ maxWidth: "infinity" }}
@@ -417,10 +455,12 @@ function PodcastSession({
     return (
       <VStack spacing={8} padding={14} frame={{ maxWidth: "infinity" }}
         background={<RoundedRectangle cornerRadius={14} fill="tertiarySystemFill" />}>
-        <Text font="footnote" foregroundStyle="secondaryLabel">
-          音频下载失败，请检查网络后重试。
-        </Text>
-        <Button title="重试" buttonStyle="bordered" action={() => setAttempt(attempt + 1)} />
+        <Text font="footnote" foregroundStyle="secondaryLabel">音频下载或播放出错了</Text>
+        {errMsg != null ? (
+          <Text font="caption2" foregroundStyle="tertiaryLabel">{errMsg}</Text>
+        ) : null}
+        <Button title="清缓存并重试" buttonStyle="bordered" buttonBorderShape="capsule"
+          action={retryWithCleanCache} />
       </VStack>
     )
   }
