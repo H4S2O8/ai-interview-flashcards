@@ -11,7 +11,7 @@ import {
   type Card, type Deck, type Stats,
 } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
-import { ArticleView, hasArticle, listArticles, warmArticles } from "./article"
+import { ArticleView, hasArticle, hasPodcast, listArticles, warmArticles } from "./article"
 import { AskAILink, AskAIView, LlmSettingsBlock } from "./ask"
 
 const SESSION_LIMIT = 40
@@ -360,7 +360,9 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
             </NavigationLink>
             {hasArticle(card.deck, card.qno) ? (
               <NavigationLink destination={<ArticleView deck={card.deck} qno={card.qno} />}>
-                <Text font="caption2" foregroundStyle="accentColor">原文</Text>
+                <Text font="caption2" foregroundStyle="accentColor">
+                  {hasPodcast(card.deck, card.qno) ? "听课" : "原文"}
+                </Text>
               </NavigationLink>
             ) : null}
             <Spacer />
@@ -430,7 +432,10 @@ function DeckDetail({ deck }: { deck: Deck }) {
         <Section header={<Text>第 {qno} 题 · {group.length} 张</Text>}>
           {hasArticle(deck.id, qno) ? (
             <NavigationLink destination={<ArticleView deck={deck.id} qno={qno} />}>
-              <Label title="阅读原文" systemImage="doc.text" />
+              <Label
+                title={hasPodcast(deck.id, qno) ? "听课 · 原文" : "阅读原文"}
+                systemImage={hasPodcast(deck.id, qno) ? "headphones" : "doc.text"}
+              />
             </NavigationLink>
           ) : null}
           <AskAILink
@@ -492,7 +497,12 @@ function ArticlesTab() {
                       frame={{ width: 26 }}>
                       {it.qno}
                     </Text>
-                    <Text lineLimit={2}>{it.title}</Text>
+                    <VStack alignment="leading" spacing={2}>
+                      <Text lineLimit={2}>{it.title}</Text>
+                      {hasPodcast(deck.id, it.qno) ? (
+                        <Text font="caption2" foregroundStyle="tertiaryLabel">可听播客课</Text>
+                      ) : null}
+                    </VStack>
                   </HStack>
                 </NavigationLink>
               ))}

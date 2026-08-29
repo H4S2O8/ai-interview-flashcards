@@ -1,4 +1,6 @@
 .DS_Store
+.env
+.venv/
 
 # 构建产物
 *.scripting
