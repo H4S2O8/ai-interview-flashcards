@@ -56,8 +56,23 @@ PREFIXES = {"agent": "", "tools": "tools", "rag": "rag", "llm": "llm", "langchai
 CURRENT_DECK = "agent"
 
 
-def T(s: str, t: str) -> dict:
-    return {"s": s, "t": t.strip()}
+def T(s: str, t: str, tts: str | None = None) -> dict:
+    """t = 字幕/LRC 显示文本（必须干净）；tts = 送给 Fish Audio 的文本，可带 [emotion] 标记。
+
+    实测（s2.1-pro-free，桑多涅音色）：方括号标记会被解析并剥掉，不会被念出来 ——
+    「[very slightly nostalgic and reflective tone]他填。」0.69s，
+    同长度中文当字念是 2.69s。[sighing] 加约 0.6s 真叹气，[laughing] 加约 0.9s。
+    但 [break] / [long-break] 测不出停顿，别用。
+    另：「……」对 TTS 完全无效（带与不带都是 0.65s），它只影响字幕。"""
+    d = {"s": s, "t": t.strip()}
+    if tts and tts.strip() != t.strip():
+        d["tts"] = tts.strip()
+    return d
+
+
+def tts_text(turn: dict) -> str:
+    """合成用文本：有 tts 就用 tts，否则用显示文本。"""
+    return turn.get("tts") or turn["t"]
 
 
 def ep(n: int, title: str, turns: list[dict]) -> None:
@@ -3027,7 +3042,7 @@ def annotate_from_cache() -> int:
     done = 0
     for n in sorted(EPISODES):
         turns = EPISODES[n]["turns"]
-        wavs = [cache_key(t["t"], HOST_VOICE if t["s"] == "host" else GUEST_VOICE)
+        wavs = [cache_key(tts_text(t), HOST_VOICE if t["s"] == "host" else GUEST_VOICE)
                 for t in turns]
         if not all(w.exists() and w.stat().st_size > 1000 for w in wavs):
             continue
@@ -3067,7 +3082,13 @@ def dump_json() -> None:
         except Exception:
             old = {}
     decks = old.get("decks", {}) if isinstance(old, dict) else {}
-    decks[CURRENT_DECK] = {str(n): EPISODES[n] for n in sorted(EPISODES)}
+    def _clean(ep: dict) -> dict:
+        # tts 字段只给合成用，不进 App —— 否则 [emotion] 标记会显示在字幕里
+        e = dict(ep)
+        e["turns"] = [{k: v for k, v in t.items() if k != "tts"} for t in ep["turns"]]
+        return e
+
+    decks[CURRENT_DECK] = {str(n): _clean(EPISODES[n]) for n in sorted(EPISODES)}
     payload = {
         "version": 1,
         "series": SERIES,
@@ -3189,7 +3210,7 @@ def generate(only: set[int] | None, force: bool, workers: int) -> None:
                     turn = turns[i]
                     voice = HOST_VOICE if turn["s"] == "host" else GUEST_VOICE
                     t0 = time.time()
-                    fresh = tts_one(client, key, turn["t"], voice, parts[i])
+                    fresh = tts_one(client, key, tts_text(turn), voice, parts[i])
                     with lock:
                         done[0] += 1
                         tag = "API" if fresh else "缓存"
