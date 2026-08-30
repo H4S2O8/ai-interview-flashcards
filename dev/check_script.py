@@ -144,8 +144,13 @@ def main():
     # 反向闸：桑多涅平均轮长。上线三季 60.7 / 86.2 / 49.1，
     # 我写的 S4 只有 30.5、S5 旧稿 25.3 —— 把讲解绞成一句一问的快问快答，
     # 仁菜退化成提问机。低于 40 一律打回。
-    if gl and statistics.mean(gl) < 40:
-        fail.append(f"桑多涅均轮长 {statistics.mean(gl):.1f} 字，低于 40 —— 对白被切碎成快问快答")
+    # 下限按上线季逐集实测最小值定（agent 46.8 / tools 38.0 / rag 29.3），取 30。
+    # 别再拍脑袋 —— 剧情重的集子（大量一两个字的短打）本来就会压低这个值。
+    # 但全季均值应落在上线季中位区间 48–90，低于 40 要人工看一遍是不是又切碎了。
+    if gl and statistics.mean(gl) < 30:
+        fail.append(f"桑多涅均轮长 {statistics.mean(gl):.1f} 字，低于 30 —— 对白被切碎成快问快答")
+    elif gl and statistics.mean(gl) < 40:
+        warn.append(f"桑多涅均轮长 {statistics.mean(gl):.1f} 字，低于 40（上线季中位 48–90）—— 人工看一遍讲解是否被拆散")
 
     if not args.quiet:
         print(f"── {pathlib.Path(args.path).name}")
