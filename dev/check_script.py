@@ -119,9 +119,11 @@ def main():
     # 会吐出一段有声的乱码：桑多涅 4.88s、仁菜 2.04s，峰值 7000-10000 从头响到尾，
     # 单测还抽到过 47.55s。已上线的 rag 1 处、llm 8 处、langchain 10 处。
     # 要沉默一拍就删掉这一轮，或者显示写「……」、合成走 [sighing]（T 的第三参）。
+    # 注意：这里只看得到显示文本。给了合成文本（T 的第三参，如 [sighing]）的轮次是安全的，
+    # 真正的把关在 gen_podcast_renna.py 的讲稿体检里 —— 那里能看到 tts 字段。
     bare = [i for i, (r, t) in enumerate(ts, 1) if t.strip() in ("……", "…", "......")]
     if bare:
-        fail.append(f"有 {len(bare)} 轮整轮只有省略号（第 {bare[:5]} 轮）—— 会合成出数秒有声乱码")
+        warn.append(f"有 {len(bare)} 轮整轮只有省略号（第 {bare[:5]} 轮）—— 必须给合成文本，否则会合成出数秒有声乱码")
 
     # 3. 压缩比（手册 §3.2）
     ratio = None

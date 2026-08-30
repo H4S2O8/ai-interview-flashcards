@@ -2969,6 +2969,15 @@ def lint(strict: bool = False) -> int:
                     problems += 1
                     print(f"  ✗ ep{n:02d} 第 {i} 轮 [{turn['s']}] {why}")
                     print(f"      {turn['t'][:60]}")
+    # 整轮只有省略号 —— 已验证的音频缺陷。「……」对 Fish Audio 完全无效，
+    # 模型无词可念时会吐出一段有声的东西（桑多涅 4.88s、仁菜 2.04s，
+    # 峰值 7000-10000 从头响到尾，单测还抽到过 47.55s）。
+    # 给了 tts 覆写（如 [sighing]）就安全，这里只揪没给的。
+    for n in sorted(EPISODES):
+        for i, turn in enumerate(EPISODES[n]["turns"]):
+            if turn["t"].strip() in ("……", "…", "......") and not turn.get("tts"):
+                problems += 1
+                print(f"  ✗ ep{n:02d} 第 {i} 轮 [{turn['s']}] 整轮只有省略号且没给合成文本")
     print("  ✓ 讲稿体检通过，无越界台词" if not problems else f"  共 {problems} 处")
     if problems and strict:
         sys.exit("讲稿体检未通过")
