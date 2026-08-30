@@ -51,8 +51,8 @@ CACHE_DIR = DEV / ".tts-cache"   # 分句 wav 缓存，失败重跑不必重复�
 CONCURRENCY = 5                  # 每集内并发合成的轮数（--concurrency 覆盖）
 
 EPISODES: dict[int, dict] = {}          # 当前激活 deck 的集
-EPS_STORE: dict[str, dict[int, dict]] = {"agent": {}, "tools": {}, "rag": {}, "llm": {}}
-PREFIXES = {"agent": "", "tools": "tools", "rag": "rag", "llm": "llm"}   # S2/S3/S4 加前缀防撞前季
+EPS_STORE: dict[str, dict[int, dict]] = {"agent": {}, "tools": {}, "rag": {}, "llm": {}, "langchain": {}}
+PREFIXES = {"agent": "", "tools": "tools", "rag": "rag", "llm": "llm", "langchain": "lc"}   # S2/S3/S4 加前缀防撞前季
 CURRENT_DECK = "agent"
 
 
@@ -6116,7 +6116,7 @@ def main() -> None:
     ap.add_argument("--sync-only", action="store_true",
                     help="只用缓存补时间轴并写 json/lrc，不调 API")
     ap.add_argument("--force", action="store_true", help="覆盖已有 mp3")
-    ap.add_argument("--deck", default="tools", choices=["agent", "tools", "rag", "llm"],
+    ap.add_argument("--deck", default="tools", choices=["agent", "tools", "rag", "llm", "langchain"],
                     help="讲稿 deck（默认 tools）")
     ap.add_argument("--txt-only", action="store_true", help="只导出 讲稿/*.txt，不调 API")
     ap.add_argument("--host-voice", default="")
