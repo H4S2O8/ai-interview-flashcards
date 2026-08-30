@@ -10,6 +10,7 @@
 import argparse, json, pathlib, re, statistics, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+SENT_SPLIT = re.compile(r"[。！？]|——|……")
 INTERJ = list("啊诶欸哦噢呀嘛呢吧哎唉嗯") + ["……", "——", "！", "？！"]
 # 知识术语不再写死：从该集原文自动抽取（拉丁词 + 常见中文技术词），
 # 这样换 deck 不用改代码。写死过一次，llm 板块的 Transformer/Attention 全不认，
@@ -118,20 +119,33 @@ def main():
     if args.qno:
         src = source_chars(args.deck, args.qno)
         if src:
-            know = sum(len(t) for t in texts if any(w in t for w in TERMS))
+            # 句级而非轮级：轮级口径依赖分轮方式 —— 同一段文字，短轮拆开算「非知识」，
+            # 并成段落就整段计进知识字数。改稿时把快问快答并回讲解，比值会凭空掉。
+            # 实测上线季轮级下限：tools 1.34（长轮季），已低于原来写死的 1.6。
+            # 句级下限：agent 2.67 / tools 1.83 / rag 2.05 —— 取 1.8 作闸。
+            sents = [x for t in texts for x in SENT_SPLIT.split(t)]
+            know = sum(len(x) for x in sents if any(w in x for w in TERMS))
             ratio = src / know if know else 0
-            if ratio < 1.6:
-                fail.append(f"知识压缩比 {ratio:.2f}x 低于 1.6x —— 接近照读原文")
-            elif ratio > 3.5:
+            if ratio < 1.8:
+                fail.append(f"知识压缩比 {ratio:.2f}x 低于 1.8x —— 接近照读原文")
+            elif ratio > 8.0:
                 # 只警告不判失败：分母靠关键词表估算，剧情重的集子（非知识轮高）会被高估。
                 # 见到这条要人工核一遍原文覆盖，别直接当漏。
-                warn.append(f"知识压缩比 {ratio:.2f}x 高于 3.5x —— 需人工核对原文覆盖"
+                warn.append(f"知识压缩比 {ratio:.2f}x 高于 8.0x —— 需人工核对原文覆盖"
                             f"（剧情重的集子此值会虚高）")
 
     # 4. 人设：桑多涅不该长篇大论
     gl = [len(t) for r, t in ts if r == "桑多涅"]
-    if gl and max(gl) > 110:
-        fail.append(f"桑多涅有单轮 {max(gl)} 字，超过 110（她说话短）")
+    # 单轮上限：曾经写死 110「她说话短」，与上线季直接矛盾 ——
+    # S1 最长 191、S2 最长 318、S3 最长 109。她讲解时本来就是整段。
+    # 320 只挡真正失控的一轮，不再逼着把讲解切碎。
+    if gl and max(gl) > 320:
+        fail.append(f"桑多涅有单轮 {max(gl)} 字，超过 320")
+    # 反向闸：桑多涅平均轮长。上线三季 60.7 / 86.2 / 49.1，
+    # 我写的 S4 只有 30.5、S5 旧稿 25.3 —— 把讲解绞成一句一问的快问快答，
+    # 仁菜退化成提问机。低于 40 一律打回。
+    if gl and statistics.mean(gl) < 40:
+        fail.append(f"桑多涅均轮长 {statistics.mean(gl):.1f} 字，低于 40 —— 对白被切碎成快问快答")
 
     if not args.quiet:
         print(f"── {pathlib.Path(args.path).name}")
