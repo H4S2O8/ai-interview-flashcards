@@ -114,6 +114,15 @@ def main():
         lo, hi = BANDS[k]
         if v < lo: fail.append(f"人味 {k} = {v if isinstance(v,int) else format(v,'.0%')}，低于下限 {lo if isinstance(v,int) else format(lo,'.0%')}")
 
+    # 2.9 整轮只有省略号 —— 已验证的音频缺陷
+    # 「……」对 TTS 完全无效（带与不带同长），所以整轮只有它时模型无词可念，
+    # 会吐出一段有声的乱码：桑多涅 4.88s、仁菜 2.04s，峰值 7000-10000 从头响到尾，
+    # 单测还抽到过 47.55s。已上线的 rag 1 处、llm 8 处、langchain 10 处。
+    # 要沉默一拍就删掉这一轮，或者显示写「……」、合成走 [sighing]（T 的第三参）。
+    bare = [i for i, (r, t) in enumerate(ts, 1) if t.strip() in ("……", "…", "......")]
+    if bare:
+        fail.append(f"有 {len(bare)} 轮整轮只有省略号（第 {bare[:5]} 轮）—— 会合成出数秒有声乱码")
+
     # 3. 压缩比（手册 §3.2）
     ratio = None
     if args.qno:
