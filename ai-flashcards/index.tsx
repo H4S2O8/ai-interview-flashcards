@@ -20,6 +20,24 @@ import { AskAILink, AskAIView, LlmSettingsBlock } from "./ask"
 const SESSION_LIMIT = 40
 const REMINDER_HOUR = 20
 
+/**
+ * 收起但不退出：Script.minimize() 把界面收进 Scripting 的「运行中脚本」列表，
+ * 实例继续存活、状态保留 —— 可以直接去打开另一个项目，
+ * 之后从运行列表点回来原样恢复（挂起期间 present 的 promise 保持 pending）。
+ * 多窗口模式（iPad）下 minimize 会被忽略，点了等于没点，无害。
+ * minimize 是 2.4.9 新增 API：老版本 Scripting 上整个按钮不渲染，避免点了报错。
+ */
+function MinimizeButton() {
+  if (typeof Script.minimize !== "function") return null
+  return (
+    <Button
+      title="收起"
+      systemImage="arrow.down.right.and.arrow.up.left"
+      action={() => { Script.minimize() }}
+    />
+  )
+}
+
 // ------------------------------------------------------------- 复习
 
 const GRADE_COLORS = ["systemRed", "systemOrange", "systemBlue", "systemGreen"] as const
@@ -153,7 +171,12 @@ function fitFonts(front: string, back: string, revealed: boolean) {
 
 function ReviewTab({ onClose }: { onClose: () => void }) {
   // 全屏呈现没有下滑关闭，关闭入口挂在这里
-  const closeBar = { topBarLeading: <Button title="关闭" systemImage="xmark" action={onClose} /> }
+  const closeBar = {
+    topBarLeading: [
+      <Button title="关闭" systemImage="xmark" action={onClose} />,
+      <MinimizeButton />,
+    ],
+  }
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -496,7 +519,7 @@ function BrowseTab() {
 
   return (
     <NavigationStack>
-      <List navigationTitle="题库">
+      <List navigationTitle="题库" toolbar={{ topBarLeading: <MinimizeButton /> }}>
         {decks.map(deck => (
           <NavigationLink destination={<DeckDetail deck={deck} />}>
             <Label title={deck.name} systemImage={deck.icon} />
@@ -522,7 +545,7 @@ function PodcastTab() {
 
   return (
     <NavigationStack>
-      <List navigationTitle="听课">
+      <List navigationTitle="听课" toolbar={{ topBarLeading: <MinimizeButton /> }}>
         {decks.map(deck => {
           const episodes = listEpisodes(deck.id)
           if (episodes.length === 0) return null
@@ -634,7 +657,7 @@ function StatsTab() {
 
   return (
     <NavigationStack>
-      <List navigationTitle="统计">
+      <List navigationTitle="统计" toolbar={{ topBarLeading: <MinimizeButton /> }}>
         <Section header={<Text>进度</Text>}>
           <StatRow label="卡片总数" value={s ? `${s.total}` : "—"} />
           <StatRow label="今日待复习" value={s ? `${s.due}` : "—"} />
