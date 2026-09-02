@@ -1,9 +1,11 @@
-# AI 面试闪卡
+# AI 与算法闪卡
 
-跑在 [Scripting](https://apps.apple.com/app/apple-store/id6479691128) 上的间隔重复闪卡，题库来自
-[小林面试笔记的大模型面试题](https://xiaolinnote.com/ai/)。
+跑在 [Scripting](https://apps.apple.com/app/apple-store/id6479691128) 上的间隔重复学习系统。目前包含两类内容：
 
-当前收录全部五个专题，共 86 道题、556 张卡片、86 篇原文：
+- 来自[小林面试笔记的大模型面试题](https://xiaolinnote.com/ai/)的 AI 面试闪卡。
+- 自行整理的“经典算法 150”训练卡，只保留原创问题抽象、解题思路和外部练习索引，不内置平台完整题面。
+
+当前共 706 张卡片：AI 面试 556 张，经典算法 150 张。AI 面试部分收录五个专题、86 道题和 86 篇原文：
 
 | 专题 | 题数 | 卡片 | 平均 |
 | --- | --- | --- | --- |
@@ -29,6 +31,8 @@
 | 文件 | 作用 |
 | --- | --- |
 | `ai-flashcards/index.tsx` | 主 App：复习 / 题库 / 听课 / 统计四个 Tab |
+| `ai-flashcards/algorithm.tsx` | 经典算法 150 的分类浏览、解析与外部练习入口 |
+| `ai-flashcards/algorithm150.json` | 150 道原创算法训练元数据，不含抓取的完整题面 |
 | `ai-flashcards/widget.tsx` | 桌面小组件，显示今日待复习张数 |
 | `ai-flashcards/db.ts` | SQLite 建表、导入、查询、评分写回、LLM 配置与问答记录 |
 | `ai-flashcards/srs.ts` | SM-2 调度算法 |
@@ -44,8 +48,8 @@
 
 ## 自动更新
 
-`script.json` 里配了 `remoteResource`，指向本仓库的 `ai-flashcards/` 目录，`autoUpdateInterval` 为 86400 秒
-（24 小时）。脚本会按这个间隔自己拉取更新，不用再手动导入。
+`script.json` 里配了 `remoteResource`，指向本仓库的 `ai-flashcards/` 目录，`autoUpdateInterval` 为 600 秒
+（10 分钟）。脚本会按这个间隔自己拉取更新，不用再手动导入。
 
 复习页右下角显示 `v<脚本版本> · 题库 v<cards.json 版本>`，可以据此确认手机上跑的是哪一版。
 
@@ -54,8 +58,11 @@
 数据库在 `FileManager.appGroupDocumentsDirectory/ai-flashcards.db`，放 App Group 目录是为了让小组件
 （跑在独立扩展进程）也能读到。
 
-卡片 id 由「题面文本的 FNV-1a 哈希」生成，所以在 `cards.json` 里增删、重排卡片都不会打乱已有复习进度，
-只有改动题面才会被当成新卡。改完卡片记得把 `cards.json` 顶部的 `version` 加一，App 下次启动会自动增量导入。
+普通卡片 id 由「题面文本的 FNV-1a 哈希」生成，所以在 `cards.json` 里增删、重排卡片都不会打乱已有复习进度，
+只有改动题面才会被当成新卡。v3.0 起种子卡也可以提供稳定 `key`；经典算法卡使用练习编号作为 key，文案优化不会清空进度。
+改完卡片记得把 `cards.json` 顶部的 `version` 加一，App 下次启动会自动增量导入。
+
+题库可以在“统计 → 参与复习的题库”中单独启用或暂停。经典算法 150 默认暂停，避免版本升级后 150 张新卡一次性进入待复习队列；浏览题库和算法解析不受启用状态影响。
 
 ## 交互
 
@@ -158,7 +165,10 @@ XDG_CONFIG_HOME=<wrangler 配置目录> npx wrangler r2 object put \
 
 本仓库仅供个人学习复习使用。如果著作权方希望移除这部分内容，请提 issue，会立即删除。
 
+“经典算法 150”部分由本项目重新组织为问题抽象、解题主线、自检提示和复杂度分析，不收录外部平台的完整题面、
+示例或测试约束。LC 编号与链接仅作为练习索引，不代表本项目与对应平台存在合作或授权关系。
+
 ## 代码许可
 
-`index.tsx` / `widget.tsx` / `article.tsx` / `ask.tsx` / `db.ts` / `srs.ts` / `llm.ts` 为本仓库自有代码，MIT 许可。
-此许可不适用于 `cards.json` / `articles.json` 的内容。
+`index.tsx` / `widget.tsx` / `article.tsx` / `algorithm.tsx` / `ask.tsx` / `db.ts` / `srs.ts` / `llm.ts`
+为本仓库自有代码，MIT 许可。此许可不自动覆盖外部来源内容。

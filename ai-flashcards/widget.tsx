@@ -22,7 +22,7 @@ function WidgetView() {
   return (
     <VStack spacing={6} padding={12} alignment="leading" frame={{ maxWidth: "infinity", maxHeight: "infinity" }}>
       <HStack>
-        <Text font="caption2" foregroundStyle="secondaryLabel">AI 面试闪卡</Text>
+        <Text font="caption2" foregroundStyle="secondaryLabel">AI 与算法闪卡</Text>
         <Spacer />
       </HStack>
 

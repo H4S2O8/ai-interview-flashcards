@@ -10,6 +10,7 @@ export type Deck = {
   icon: string
   color: string
   source: string
+  enabled: number
 }
 
 export type Card = {
@@ -50,7 +51,8 @@ async function migrate(db: DB) {
       name   TEXT NOT NULL,
       icon   TEXT NOT NULL DEFAULT 'rectangle.stack',
       color  TEXT NOT NULL DEFAULT '#5E5CE6',
-      source TEXT
+      source TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE IF NOT EXISTS cards (
       id    TEXT PRIMARY KEY,
@@ -102,12 +104,17 @@ async function migrate(db: DB) {
     )
   `)
   await db.execute("CREATE INDEX IF NOT EXISTS idx_chats_q ON chats(deck, qno, ts)")
+
+  // v3.0：题库可选择是否加入全局复习。老库没有 enabled 列，需要原地升级。
+  const deckColumns = await db.fetchAll<{ name: string }>("PRAGMA table_info(decks)")
+  if (!deckColumns.some(c => c.name === "enabled")) {
+    await db.execute("ALTER TABLE decks ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
+  }
 }
 
 /**
- * 用问题正面文本算稳定 id（FNV-1a）。
- * 这样 cards.json 里增删、重排卡片都不会打乱已有的复习进度，
- * 只有改动问题文本才会被当成一张新卡。
+ * 普通卡用问题正面文本算稳定 id（FNV-1a）；种子提供 key 时优先用 key。
+ * 前者兼容已有题库，后者允许持续润色文案而不丢复习进度。
  */
 function cardId(deck: string, front: string): string {
   let h = 0x811c9dc5
@@ -128,7 +135,8 @@ type SeedFile = {
     icon?: string
     color?: string
     source?: string
-    cards: Array<{ q: string; a: string; n: number }>
+    enabledByDefault?: boolean
+    cards: Array<{ q: string; a: string; n: number; key?: string }>
   }>
 }
 
@@ -153,22 +161,30 @@ export async function seedIfNeeded(force = false): Promise<{ imported: number; s
 
   for (const deck of seed.decks) {
     await db.execute(
-      `INSERT INTO decks (id, name, icon, color, source) VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO decks (id, name, icon, color, source, enabled) VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, icon = excluded.icon,
                                      color = excluded.color, source = excluded.source`,
-      [deck.id, deck.name, deck.icon ?? "rectangle.stack", deck.color ?? "#5E5CE6", deck.source ?? null]
+      [
+        deck.id,
+        deck.name,
+        deck.icon ?? "rectangle.stack",
+        deck.color ?? "#5E5CE6",
+        deck.source ?? null,
+        deck.enabledByDefault === false ? 0 : 1,
+      ]
     )
 
     const seen: string[] = []
     for (let i = 0; i < deck.cards.length; i++) {
       const c = deck.cards[i]
-      const id = cardId(deck.id, c.q)
+      const id = c.key ? `${deck.id}-${c.key}` : cardId(deck.id, c.q)
       seen.push(id)
 
       // 正反面文本每次都更新，进度行只在第一次出现时创建
       await db.execute(
         `INSERT INTO cards (id, deck, qno, front, back, ord) VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET back = excluded.back, qno = excluded.qno, ord = excluded.ord`,
+         ON CONFLICT(id) DO UPDATE SET front = excluded.front, back = excluded.back,
+                                       qno = excluded.qno, ord = excluded.ord`,
         [id, deck.id, c.n, c.q, c.a, i]
       )
       const s = newSchedule(now)
@@ -205,7 +221,9 @@ const CARD_COLUMNS = `
 export async function dueCards(limit = 50, deck?: string): Promise<Card[]> {
   const db = await openDB()
   const args: (string | number)[] = [Date.now()]
-  let sql = `SELECT ${CARD_COLUMNS} FROM cards c JOIN sched s ON s.card_id = c.id WHERE s.due <= ?`
+  let sql = `SELECT ${CARD_COLUMNS}
+             FROM cards c JOIN sched s ON s.card_id = c.id JOIN decks d ON d.id = c.deck
+             WHERE s.due <= ? AND d.enabled = 1`
   if (deck != null) {
     sql += " AND c.deck = ?"
     args.push(deck)
@@ -218,7 +236,9 @@ export async function dueCards(limit = 50, deck?: string): Promise<Card[]> {
 export async function countDue(deck?: string): Promise<number> {
   const db = await openDB()
   const args: (string | number)[] = [Date.now()]
-  let sql = "SELECT COUNT(*) AS n FROM cards c JOIN sched s ON s.card_id = c.id WHERE s.due <= ?"
+  let sql = `SELECT COUNT(*) AS n
+             FROM cards c JOIN sched s ON s.card_id = c.id JOIN decks d ON d.id = c.deck
+             WHERE s.due <= ? AND d.enabled = 1`
   if (deck != null) {
     sql += " AND c.deck = ?"
     args.push(deck)
@@ -229,7 +249,12 @@ export async function countDue(deck?: string): Promise<number> {
 
 export async function listDecks(): Promise<Deck[]> {
   const db = await openDB()
-  return db.fetchAll<Deck>("SELECT id, name, icon, color, source FROM decks ORDER BY id")
+  return db.fetchAll<Deck>("SELECT id, name, icon, color, source, enabled FROM decks ORDER BY id")
+}
+
+export async function setDeckEnabled(deck: string, enabled: boolean): Promise<void> {
+  const db = await openDB()
+  await db.execute("UPDATE decks SET enabled = ? WHERE id = ?", [enabled ? 1 : 0, deck])
 }
 
 export async function cardsOfDeck(deck: string): Promise<Card[]> {
@@ -272,12 +297,13 @@ export async function stats(): Promise<Stats> {
   const row = await db.fetchOne<{
     total: number; due: number; fresh: number; learning: number; mature: number
   }>(
-    `SELECT COUNT(*) AS total,
+     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN s.due <= ? THEN 1 ELSE 0 END)                       AS due,
             SUM(CASE WHEN s.reps = 0 THEN 1 ELSE 0 END)                       AS fresh,
             SUM(CASE WHEN s.reps > 0 AND s.interval < 21 THEN 1 ELSE 0 END)   AS learning,
             SUM(CASE WHEN s.interval >= 21 THEN 1 ELSE 0 END)                 AS mature
-     FROM cards c JOIN sched s ON s.card_id = c.id`,
+     FROM cards c JOIN sched s ON s.card_id = c.id JOIN decks d ON d.id = c.deck
+     WHERE d.enabled = 1`,
     [now]
   )
 

@@ -7,7 +7,7 @@ import {
 
 import {
   cardsOfDeck, countDue, dueCards, gradeCard, listDecks, openDB, resetProgress,
-  seedIfNeeded, seedVersion, stats,
+  seedIfNeeded, seedVersion, setDeckEnabled, stats,
   type Card, type Deck, type Stats,
 } from "./db"
 import { GRADE_LABELS, previewInterval, type Grade } from "./srs"
@@ -16,6 +16,9 @@ import {
   podcastMeta, warmArticles,
 } from "./article"
 import { AskAILink, AskAIView, LlmSettingsBlock } from "./ask"
+import {
+  ALGORITHM_DECK_ID, AlgorithmDeckView, AlgorithmProblemView, warmAlgorithm,
+} from "./algorithm"
 
 const SESSION_LIMIT = 40
 const REMINDER_HOUR = 20
@@ -169,7 +172,13 @@ function fitFonts(front: string, back: string, revealed: boolean) {
   return { front: "subheadline", back: "footnote" } as const
 }
 
-function ReviewTab({ onClose }: { onClose: () => void }) {
+function ReviewTab({
+  onClose, onDueChanged, libraryRevision,
+}: {
+  onClose: () => void
+  onDueChanged: () => void
+  libraryRevision: Observable<number>
+}) {
   // 全屏呈现没有下滑关闭，关闭入口挂在这里
   const closeBar = {
     topBarLeading: [
@@ -202,7 +211,7 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
     setPhase("idle")
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [libraryRevision.value])
 
   /** 飞出 -> 记分 -> 新卡淡入，三段接起来 */
   function commit(g: Grade, direction: number) {
@@ -215,6 +224,7 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
 
     setTimeout(async () => {
       await gradeCard(card, g)
+      onDueChanged()
       dragX.setValue(0)          // 此时卡片已透明，位移归零看不见
       setDone(done + 1)
       setRevealed(false)
@@ -391,6 +401,11 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
             <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
               <Text font="caption2" foregroundStyle="accentColor">询问 AI</Text>
             </NavigationLink>
+            {card.deck === ALGORITHM_DECK_ID ? (
+              <NavigationLink destination={<AlgorithmProblemView order={card.qno} />}>
+                <Text font="caption2" foregroundStyle="accentColor">算法解析</Text>
+              </NavigationLink>
+            ) : null}
             {hasArticle(card.deck, card.qno) || hasPodcast(card.deck, card.qno) ? (
               <NavigationLink
                 destination={
@@ -426,6 +441,11 @@ function ReviewTab({ onClose }: { onClose: () => void }) {
           <NavigationLink destination={<AskAIView deck={card.deck} qno={card.qno} defaultPrompt={card.front} />}>
             <Text font="footnote" foregroundStyle="accentColor">询问 AI（默认带本题题干）</Text>
           </NavigationLink>
+          {card.deck === ALGORITHM_DECK_ID ? (
+            <NavigationLink destination={<AlgorithmProblemView order={card.qno} />}>
+              <Text font="footnote" foregroundStyle="accentColor">查看提示与算法解析</Text>
+            </NavigationLink>
+          ) : null}
         </VStack>
       )}
 
@@ -447,6 +467,13 @@ function CardDetail({ card }: { card: Card }) {
             : `已复习 ${card.reps} 次 · 间隔 ${card.interval} 天 · 难度系数 ${card.ease.toFixed(2)}`}
         </Text>
       </Section>
+      {card.deck === ALGORITHM_DECK_ID ? (
+        <Section>
+          <NavigationLink destination={<AlgorithmProblemView order={card.qno} />}>
+            <Label title="查看算法解析与外部练习" systemImage="curlybraces.square" />
+          </NavigationLink>
+        </Section>
+      ) : null}
       <Section>
         <AskAILink deck={card.deck} qno={card.qno} defaultPrompt={card.front} />
       </Section>
@@ -513,16 +540,22 @@ function DeckDetail({ deck }: { deck: Deck }) {
   )
 }
 
-function BrowseTab() {
+function BrowseTab({ libraryRevision }: { libraryRevision: Observable<number> }) {
   const [decks, setDecks] = useState<Deck[]>([])
-  useEffect(() => { listDecks().then(setDecks) }, [])
+  useEffect(() => { listDecks().then(setDecks) }, [libraryRevision.value])
 
   return (
     <NavigationStack>
       <List navigationTitle="题库" toolbar={{ topBarLeading: <MinimizeButton /> }}>
         {decks.map(deck => (
-          <NavigationLink destination={<DeckDetail deck={deck} />}>
-            <Label title={deck.name} systemImage={deck.icon} />
+          <NavigationLink destination={deck.id === ALGORITHM_DECK_ID ? <AlgorithmDeckView /> : <DeckDetail deck={deck} />}>
+            <HStack>
+              <Label title={deck.name} systemImage={deck.icon} />
+              <Spacer />
+              {deck.enabled === 0 ? (
+                <Text font="caption2" foregroundStyle="tertiaryLabel">未加入复习</Text>
+              ) : null}
+            </HStack>
           </NavigationLink>
         ))}
       </List>
@@ -618,17 +651,21 @@ function StatRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function StatsTab() {
+function StatsTab({ onLibraryChanged }: { onLibraryChanged: () => void }) {
   const [s, setS] = useState<Stats | null>(null)
+  const [decks, setDecks] = useState<Deck[]>([])
   const [message, setMessage] = useState("")
 
-  async function refresh() { setS(await stats()) }
+  async function refresh() {
+    setS(await stats())
+    setDecks(await listDecks())
+  }
   useEffect(() => { refresh() }, [])
 
   async function enableReminder() {
     await Notification.removeAllPendingsOfCurrentScript()
     await Notification.schedule({
-      title: "该复习闪卡了",
+      title: "该复习知识闪卡了",
       body: "打开看看今天到期了几张",
       trigger: new CalendarNotificationTrigger({
         dateMatching: new DateComponents({ hour: REMINDER_HOUR, minute: 0 }),
@@ -646,13 +683,25 @@ function StatsTab() {
   async function reimport() {
     const r = await seedIfNeeded(true)
     await refresh()
+    onLibraryChanged()
     setMessage(`已重新导入 ${r.imported} 张卡片（复习进度保留）`)
   }
 
   async function reset() {
     await resetProgress()
     await refresh()
+    onLibraryChanged()
     setMessage("复习进度已清空")
+  }
+
+  async function toggleDeck(deck: Deck) {
+    const next = deck.enabled === 0
+    await setDeckEnabled(deck.id, next)
+    await refresh()
+    onLibraryChanged()
+    setMessage(next
+      ? `已将「${deck.name}」加入复习；新卡会从今天开始进入队列`
+      : `已暂停「${deck.name}」；浏览和历史进度仍会保留`)
   }
 
   return (
@@ -669,6 +718,19 @@ function StatsTab() {
           <StatRow label="未学" value={s ? `${s.fresh}` : "—"} />
           <StatRow label="学习中（间隔 < 21 天）" value={s ? `${s.learning}` : "—"} />
           <StatRow label="已掌握（间隔 ≥ 21 天）" value={s ? `${s.mature}` : "—"} />
+        </Section>
+
+        <Section
+          header={<Text>参与复习的题库</Text>}
+          footer={<Text>暂停只会移出复习队列，不会删除题库、进度或问答记录。</Text>}
+        >
+          {decks.map(deck => (
+            <Button
+              title={`${deck.enabled !== 0 ? "✓" : "○"} ${deck.name}`}
+              systemImage={deck.enabled !== 0 ? "checkmark.circle.fill" : "circle"}
+              action={() => { toggleDeck(deck) }}
+            />
+          ))}
         </Section>
 
         <Section header={<Text>每日提醒</Text>}>
@@ -699,24 +761,34 @@ function StatsTab() {
 function Root() {
   const selection = useObservable(0)
   const dismiss = Navigation.useDismiss()
-  const [dueBadge, setDueBadge] = useState(0)
-  useEffect(() => { countDue().then(setDueBadge) }, [])
+  const dueBadge = useObservable(0)
+  const libraryRevision = useObservable(0)
+  const refreshDue = () => { countDue().then(n => dueBadge.setValue(n)) }
+  const libraryChanged = () => {
+    libraryRevision.setValue(libraryRevision.value + 1)
+    refreshDue()
+  }
+  useEffect(() => { refreshDue() }, [])
 
   return (
     <TabView selection={selection}>
-      <Tab title="复习" systemImage="rectangle.on.rectangle.angled" value={0} badge={dueBadge > 0 ? dueBadge : undefined}>
+      <Tab title="复习" systemImage="rectangle.on.rectangle.angled" value={0} badge={dueBadge.value > 0 ? dueBadge.value : undefined}>
         <NavigationStack>
-          <ReviewTab onClose={() => dismiss()} />
+          <ReviewTab
+            onClose={() => dismiss()}
+            onDueChanged={refreshDue}
+            libraryRevision={libraryRevision}
+          />
         </NavigationStack>
       </Tab>
       <Tab title="题库" systemImage="books.vertical" value={1}>
-        <BrowseTab />
+        <BrowseTab libraryRevision={libraryRevision} />
       </Tab>
       <Tab title="听课" systemImage="headphones" value={2}>
         <PodcastTab />
       </Tab>
       <Tab title="统计" systemImage="chart.bar" value={3}>
-        <StatsTab />
+        <StatsTab onLibraryChanged={libraryChanged} />
       </Tab>
     </TabView>
   )
@@ -732,6 +804,11 @@ async function main() {
     warmArticles()   // 提前解析原文数据，别让它卡在翻卡那一刻
   } catch (e) {
     console.error("原文预热失败，忽略：", e)
+  }
+  try {
+    warmAlgorithm()
+  } catch (e) {
+    console.error("算法训练预热失败，忽略：", e)
   }
   // 默认是 pageSheet（抽屉），下滑即关闭 —— 复习页本身就要纵向滚动，很容易误关。
   // 改成全屏呈现；代价是没有了下滑关闭，所以 Root 里必须自带关闭按钮。

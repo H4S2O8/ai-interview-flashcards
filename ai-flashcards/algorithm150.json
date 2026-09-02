@@ -1,0 +1,2891 @@
+{
+  "version": 1,
+  "title": "经典算法 150",
+  "description": "围绕常见数据结构与算法模型整理的原创训练卡。题目链接仅用于跳转练习。",
+  "categories": [
+    {
+      "name": "数组与序列",
+      "count": 24
+    },
+    {
+      "name": "双指针",
+      "count": 5
+    },
+    {
+      "name": "滑动窗口",
+      "count": 4
+    },
+    {
+      "name": "矩阵",
+      "count": 5
+    },
+    {
+      "name": "哈希与映射",
+      "count": 9
+    },
+    {
+      "name": "区间问题",
+      "count": 4
+    },
+    {
+      "name": "栈",
+      "count": 5
+    },
+    {
+      "name": "链表",
+      "count": 11
+    },
+    {
+      "name": "二叉树",
+      "count": 14
+    },
+    {
+      "name": "树的层次遍历",
+      "count": 4
+    },
+    {
+      "name": "二叉搜索树",
+      "count": 3
+    },
+    {
+      "name": "图",
+      "count": 6
+    },
+    {
+      "name": "图的广度优先搜索",
+      "count": 3
+    },
+    {
+      "name": "字典树",
+      "count": 3
+    },
+    {
+      "name": "回溯",
+      "count": 7
+    },
+    {
+      "name": "分治",
+      "count": 4
+    },
+    {
+      "name": "线性动态规划",
+      "count": 2
+    },
+    {
+      "name": "二分查找",
+      "count": 7
+    },
+    {
+      "name": "堆与优先队列",
+      "count": 4
+    },
+    {
+      "name": "位运算",
+      "count": 6
+    },
+    {
+      "name": "数学",
+      "count": 6
+    },
+    {
+      "name": "一维动态规划",
+      "count": 5
+    },
+    {
+      "name": "多维动态规划",
+      "count": 9
+    }
+  ],
+  "problems": [
+    {
+      "order": 1,
+      "problemId": 88,
+      "title": "合并两个有序数组",
+      "englishTitle": "Merge Sorted Array",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "双指针",
+        "排序"
+      ],
+      "prompt": "面对「合并两个有序数组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "合并两个数组：从后往前填充，利用 nums1 后半的空位，避免覆盖还未比较的元素。",
+      "solution": "三指针逆序合并：i=m-1, j=n-1, k=m+n-1，从后往前把较大者填到 k；nums2 有剩余则直接拷回。",
+      "time": "O(m+n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/merge-sorted-array/"
+    },
+    {
+      "order": 2,
+      "problemId": 27,
+      "title": "移除元素",
+      "englishTitle": "Remove Element",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "双指针"
+      ],
+      "prompt": "面对「移除元素」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "快慢双指针：slow 指向下一个要保留的位置，fast 扫描所有不等于 val 的元素并原地搬过来。",
+      "solution": "slow=0；遍历 fast，若 nums[fast]!=val 就把 nums[fast] 写到 nums[slow++]；返回 slow。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/remove-element/"
+    },
+    {
+      "order": 3,
+      "problemId": 26,
+      "title": "删除有序数组中的重复项",
+      "englishTitle": "Remove Duplicates from Sorted Array",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "双指针"
+      ],
+      "prompt": "面对「删除有序数组中的重复项」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "数组有序，重复元素必相邻。用 slow 指针指向「下一个唯一元素应放的位置」。",
+      "solution": "slow=0；fast 从 1 起，遇 nums[fast]!=nums[fast-1] 就把新值写到 nums[++slow]；返回 slow+1。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/remove-duplicates-from-sorted-array/"
+    },
+    {
+      "order": 4,
+      "problemId": 80,
+      "title": "删除有序数组中的重复项 II",
+      "englishTitle": "Remove Duplicates from Sorted Array II",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "双指针"
+      ],
+      "prompt": "面对「删除有序数组中的重复项 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "允许最多两次，直接用 slow 指针：当 slow<2 或当前值 != nums[slow-2] 时才保留。",
+      "solution": "slow=0；遍历 fast，若 slow<2 或 nums[fast]!=nums[slow-2] 则 nums[slow++]=nums[fast]；返回 slow。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/remove-duplicates-from-sorted-array-ii/"
+    },
+    {
+      "order": 5,
+      "problemId": 169,
+      "title": "多数元素",
+      "englishTitle": "Majority Element",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "哈希表",
+        "分治"
+      ],
+      "prompt": "面对「多数元素」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "众数抵消（Boyer-Moore）：维护候选值与计数器，同值 +1、异值 -1，清零则换候选。",
+      "solution": "遍历：count==0 时令候选=当前元素；元素==候选则 count++，否则 count--；最终候选即众数。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/majority-element/"
+    },
+    {
+      "order": 6,
+      "problemId": 189,
+      "title": "轮转数组",
+      "englishTitle": "Rotate Array",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "数学",
+        "双指针"
+      ],
+      "prompt": "面对「轮转数组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "右移 k 等价于：整体反转，再分别反转前 k 个与后半段。k 需先取模。",
+      "solution": "k%=n；三次反转：整段反转 → 反转 [0,k) → 反转 [k,n)。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/rotate-array/"
+    },
+    {
+      "order": 7,
+      "problemId": 121,
+      "title": "买卖股票的最佳时机",
+      "englishTitle": "Best Time to Buy and Sell Stock",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「买卖股票的最佳时机」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "单次买卖：遍历时记录到当前为止的最低买入价，用当前价减去它求潜在最大利润。",
+      "solution": "维护 minPrice 与 maxProfit；遍历先更新 minPrice，再 maxProfit=max(maxProfit, price-minPrice)。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/"
+    },
+    {
+      "order": 8,
+      "problemId": 122,
+      "title": "买卖股票的最佳时机 II",
+      "englishTitle": "Best Time to Buy and Sell Stock II",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「买卖股票的最佳时机 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "多次买卖可累加所有上涨段：只要今天比昨天贵，就把这个价差计入利润。",
+      "solution": "贪心：遇到 prices[i]>prices[i-1] 就累加 prices[i]-prices[i-1]。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-ii/"
+    },
+    {
+      "order": 9,
+      "problemId": 55,
+      "title": "跳跃游戏",
+      "englishTitle": "Jump Game",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「跳跃游戏」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "维护「当前能到达的最远下标」reach，逐个位置更新，只要 i 始终 ≤ reach 就能走到最后。",
+      "solution": "遍历 i，reach=max(reach, i+nums[i])；若 i>reach 返回 false；最后 reach>=n-1 即 true。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/jump-game/"
+    },
+    {
+      "order": 10,
+      "problemId": 45,
+      "title": "跳跃游戏 II",
+      "englishTitle": "Jump Game II",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「跳跃游戏 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "贪心记录当前步的边界，走到边界就必须跳一步，并立即扩展到新边界。",
+      "solution": "维护 curEnd（本步边界）与 farthest；遍历到 n-2 时更新 farthest，i==curEnd 则 step++ 并令 curEnd=farthest。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/jump-game-ii/"
+    },
+    {
+      "order": 11,
+      "problemId": 274,
+      "title": "H 指数",
+      "englishTitle": "H-Index",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "计数排序",
+        "排序"
+      ],
+      "prompt": "面对「H 指数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "h 指数 = 至少 h 篇论文引用 ≥ h。用桶计数，从大到小累加论文数，累加数≥当前索引即为答案。",
+      "solution": "计数数组 bucket[n+1]（引用 ≥n 归入桶 n）；从 n 往 0 累加，一旦累加数≥i 返回 i。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/h-index/"
+    },
+    {
+      "order": 12,
+      "problemId": 380,
+      "title": "O(1) 时间插入、删除和获取随机元素",
+      "englishTitle": "Insert Delete GetRandom O(1)",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "设计",
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「O(1) 时间插入、删除和获取随机元素」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用数组支持随机访问 O(1)，再用哈希表「值→下标」做增删定位；删除时把末尾元素移到被删处再 pop。",
+      "solution": "list 存值、map 存值→下标；insert 存在则返回 false；remove 换到末尾再 pop；getRandom 随机取数组元素。",
+      "time": "O(1) / 操作",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/insert-delete-getrandom-o1/"
+    },
+    {
+      "order": 13,
+      "problemId": 238,
+      "title": "除了自身以外数组的乘积",
+      "englishTitle": "Product of Array Except Self",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "前缀和"
+      ],
+      "prompt": "面对「除了自身以外数组的乘积」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "answer[i] = 左边全部乘积 × 右边全部乘积；先从左算前缀，再从右算后缀一次完成。",
+      "solution": "先从左到右把左侧累积乘积写入 answer；再从右到左用右侧累积乘积乘到 answer 上。",
+      "time": "O(n)",
+      "space": "O(1)（输出数组不计）",
+      "practiceUrl": "https://leetcode.cn/problems/product-of-array-except-self/"
+    },
+    {
+      "order": 14,
+      "problemId": 134,
+      "title": "加油站",
+      "englishTitle": "Gas Station",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组"
+      ],
+      "prompt": "面对「加油站」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "总油量 < 总消耗则无解。从某个起点累积剩余，一旦小于 0 就把起点移到下一站并重置累积。",
+      "solution": "total 与 cur 均累加 gas-cost；cur<0 说明前一段不可行，将 start=i+1 并重置 cur；total<0 返回 -1 否则 start。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/gas-station/"
+    },
+    {
+      "order": 15,
+      "problemId": 135,
+      "title": "分发糖果",
+      "englishTitle": "Candy",
+      "category": "数组与序列",
+      "difficulty": "挑战",
+      "tags": [
+        "贪心",
+        "数组"
+      ],
+      "prompt": "面对「分发糖果」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "评分更高的孩子糖更多：先从左保证「右侧更高则多给」，再从右反向补足「左侧更高」。",
+      "solution": "每人 1 颗；从左 ratings[i]>ratings[i-1] 则 candies[i]=candies[i-1]+1；再从右取 max；最后求和。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/candy/"
+    },
+    {
+      "order": 16,
+      "problemId": 42,
+      "title": "接雨水",
+      "englishTitle": "Trapping Rain Water",
+      "category": "数组与序列",
+      "difficulty": "挑战",
+      "tags": [
+        "栈",
+        "数组",
+        "双指针"
+      ],
+      "prompt": "面对「接雨水」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "每一格能接的水 = min(左边最高柱, 右边最高柱) − 自身高度。双指针可以把两个 max 的预计算省掉。",
+      "solution": "双指针 + 两侧最大值：哪侧最大值更矮就结算哪侧（对面必然存在更高柱兜底），累加水量并移动该侧指针。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/trapping-rain-water/"
+    },
+    {
+      "order": 17,
+      "problemId": 13,
+      "title": "罗马数字转整数",
+      "englishTitle": "Roman to Integer",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "数学",
+        "字符串"
+      ],
+      "prompt": "面对「罗马数字转整数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "罗马数字一般「左小用减、右小用加」。从右往左扫：当前值小于右边就减，否则加。",
+      "solution": "哈希表存字符值；从右至左，当前值 < 右边值则 result-=，否则 result+=。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/roman-to-integer/"
+    },
+    {
+      "order": 18,
+      "problemId": 12,
+      "title": "整数转罗马数字",
+      "englishTitle": "Integer to Roman",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "哈希表",
+        "数学",
+        "字符串"
+      ],
+      "prompt": "面对「整数转罗马数字」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用从大到小的「关键值→符号」表（含 900/400/90/40/9/4 等价法形式），尽量取最大符号。",
+      "solution": "定义 [(1000,'M'),(900,'CM'),...]；对每个关键值，能取几个就追加几个符号直到 num 归零。",
+      "time": "O(1)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/integer-to-roman/"
+    },
+    {
+      "order": 19,
+      "problemId": 58,
+      "title": "最后一个单词的长度",
+      "englishTitle": "Length of Last Word",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "字符串"
+      ],
+      "prompt": "面对「最后一个单词的长度」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从末尾跳过空格，再从后往前数出最后一个单词的长度。",
+      "solution": "i=len(s)-1；先跳过尾部空格；再统计连续非空格字符个数。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/length-of-last-word/"
+    },
+    {
+      "order": 20,
+      "problemId": 14,
+      "title": "最长公共前缀",
+      "englishTitle": "Longest Common Prefix",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "字典树",
+        "数组",
+        "字符串"
+      ],
+      "prompt": "面对「最长公共前缀」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "以第一个字符串为模板，逐字符与其余字符串对应位置比较，遇到不匹配就回退。",
+      "solution": "纵向扫描：i 从 0 起，所有 strs[j][i] 相等则继续，否则返回 strs[0][:i]；取最短串提前收尾。",
+      "time": "O(S)（总字符数）",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/longest-common-prefix/"
+    },
+    {
+      "order": 21,
+      "problemId": 151,
+      "title": "反转字符串中的单词",
+      "englishTitle": "Reverse Words in a String",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "双指针",
+        "字符串"
+      ],
+      "prompt": "面对「反转字符串中的单词」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先按空白拆分并过滤空串，再逆序拼接。若要求 O(1) 空间，则先整体反转再反转每个单词。",
+      "solution": "s.trim().split(/\\s+/).reverse().join(' ')。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/reverse-words-in-a-string/"
+    },
+    {
+      "order": 22,
+      "problemId": 6,
+      "title": "Z 字形变换",
+      "englishTitle": "Zigzag Conversion",
+      "category": "数组与序列",
+      "difficulty": "进阶",
+      "tags": [
+        "字符串"
+      ],
+      "prompt": "面对「Z 字形变换」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "Z 字形周期为 2*numRows-2。维护若干行，顺序向下再向上「折返」填字符。",
+      "solution": "用 numRows 个 StringBuilder，dir 控制行进方向；逐字符填入对应行，最后拼接。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/zigzag-conversion/"
+    },
+    {
+      "order": 23,
+      "problemId": 28,
+      "title": "找出字符串中第一个匹配项的下标",
+      "englishTitle": "Find the Index of the First Occurrence in a String",
+      "category": "数组与序列",
+      "difficulty": "基础",
+      "tags": [
+        "双指针",
+        "字符串",
+        "字符串匹配"
+      ],
+      "prompt": "面对「找出字符串中第一个匹配项的下标」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "朴素匹配：在 haystack 每个位置尝试匹配 needle；进阶学习 KMP 预处理 next 数组。",
+      "solution": "遍历起始位置 i，逐位比较 haystack[i+j] 与 needle[j]；完全匹配返回 i。",
+      "time": "O(n×m)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/find-the-index-of-the-first-occurrence-in-a-string/"
+    },
+    {
+      "order": 24,
+      "problemId": 68,
+      "title": "文本左右对齐",
+      "englishTitle": "Text Justification",
+      "category": "数组与序列",
+      "difficulty": "挑战",
+      "tags": [
+        "数组",
+        "字符串",
+        "模拟"
+      ],
+      "prompt": "面对「文本左右对齐」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "贪心地把尽可能多的单词放进一行；非末行把多余空格均分到词间（左多右少），末行左对齐。",
+      "solution": "循环取词直到放不下；计算空格数均分到间隙；末行单词间一个空格、右侧补满。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/text-justification/"
+    },
+    {
+      "order": 25,
+      "problemId": 125,
+      "title": "验证回文串",
+      "englishTitle": "Valid Palindrome",
+      "category": "双指针",
+      "difficulty": "基础",
+      "tags": [
+        "双指针",
+        "字符串"
+      ],
+      "prompt": "面对「验证回文串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "转小写并只保留字母数字，用左右双指针向中间比较。",
+      "solution": "过滤出 isalnum 字符并转小写，双指针比较或反转后比较。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/valid-palindrome/"
+    },
+    {
+      "order": 26,
+      "problemId": 392,
+      "title": "判断子序列",
+      "englishTitle": "Is Subsequence",
+      "category": "双指针",
+      "difficulty": "基础",
+      "tags": [
+        "双指针",
+        "字符串",
+        "动态规划"
+      ],
+      "prompt": "面对「判断子序列」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "双指针分别指向 s 与 t，顺序匹配：能在 t 中按序找到 s 的所有字符即为子序列。",
+      "solution": "i,j 双指针：相等则 i++；每步 j++；遍历完 i==s.length 即 true。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/is-subsequence/"
+    },
+    {
+      "order": 27,
+      "problemId": 167,
+      "title": "两数之和 II - 输入有序数组",
+      "englishTitle": "Two Sum II - Input Array Is Sorted",
+      "category": "双指针",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "双指针",
+        "二分查找"
+      ],
+      "prompt": "面对「两数之和 II - 输入有序数组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "因数组有序，左右两指针求和：大了左移右指针，小了右移左指针。",
+      "solution": "l=0,r=n-1；sum<target 则 l++，>target 则 r--，相等返回 [l+1, r+1]。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/two-sum-ii-input-array-is-sorted/"
+    },
+    {
+      "order": 28,
+      "problemId": 11,
+      "title": "盛最多水的容器",
+      "englishTitle": "Container With Most Water",
+      "category": "双指针",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组",
+        "双指针"
+      ],
+      "prompt": "面对「盛最多水的容器」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从最外侧两端开始。想面积变大只能寄希望于「换掉较矮的那一侧」——移动短板端一定不亏。",
+      "solution": "对撞双指针：area = min(h[l], h[r]) × (r-l)，每次移动较矮一端并更新最大面积。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/container-with-most-water/"
+    },
+    {
+      "order": 29,
+      "problemId": 15,
+      "title": "三数之和",
+      "englishTitle": "3Sum",
+      "category": "双指针",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "双指针",
+        "排序"
+      ],
+      "prompt": "面对「三数之和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先排序！固定第一个数，剩下的区间里用左右双指针找「两数之和 = -固定值」。别忘了跳过重复元素。",
+      "solution": "排序后枚举首元素 i，在 (i, n-1] 区间内左右双指针收缩求两数之和；命中后跳过相同值去重。首元素 > 0 可提前结束。",
+      "time": "O(n²)",
+      "space": "O(log n)",
+      "practiceUrl": "https://leetcode.cn/problems/3sum/"
+    },
+    {
+      "order": 30,
+      "problemId": 209,
+      "title": "长度最小的子数组",
+      "englishTitle": "Minimum Size Subarray Sum",
+      "category": "滑动窗口",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找",
+        "前缀和"
+      ],
+      "prompt": "面对「长度最小的子数组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "右指针扩窗使和 ≥ target，后再用左指针收缩找最短长度。",
+      "solution": "双指针滑动：right 累加；while sum>=target 更新最短长度并减去 nums[left] 移动 left。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-size-subarray-sum/"
+    },
+    {
+      "order": 31,
+      "problemId": 3,
+      "title": "无重复字符的最长子串",
+      "englishTitle": "Longest Substring Without Repeating Characters",
+      "category": "滑动窗口",
+      "difficulty": "进阶",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "滑动窗口"
+      ],
+      "prompt": "面对「无重复字符的最长子串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "右指针不断扩张，遇到重复字符就收缩左边界；用哈希集合记录窗口内出现过哪些字符。",
+      "solution": "滑动窗口 + 哈希集合：right 右扩；若 s[right] 已在窗口中则左移 left 直到移除重复；过程中维护窗口最大宽度。",
+      "time": "O(n)",
+      "space": "O(min(n, Σ))",
+      "practiceUrl": "https://leetcode.cn/problems/longest-substring-without-repeating-characters/"
+    },
+    {
+      "order": 32,
+      "problemId": 30,
+      "title": "串联所有单词的子串",
+      "englishTitle": "Substring with Concatenation of All Words",
+      "category": "滑动窗口",
+      "difficulty": "挑战",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "滑动窗口"
+      ],
+      "prompt": "面对「串联所有单词的子串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "words 长度相同 wordLen。对每个起点偏移 0..wordLen-1 做一次滑动窗口，记录窗口内单词频次。",
+      "solution": "need 计数；外层循环起点偏移 0..w-1；内层滑动维护窗口计数，匹配且长度满足则记录起点。",
+      "time": "O(n)",
+      "space": "O(词数)",
+      "practiceUrl": "https://leetcode.cn/problems/substring-with-concatenation-of-all-words/"
+    },
+    {
+      "order": 33,
+      "problemId": 76,
+      "title": "最小覆盖子串",
+      "englishTitle": "Minimum Window Substring",
+      "category": "滑动窗口",
+      "difficulty": "挑战",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "滑动窗口"
+      ],
+      "prompt": "面对「最小覆盖子串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "右指针扩张到「刚好覆盖」，然后左指针收缩到「刚好不满足」——收缩前的那个窗口就是一个候选答案。",
+      "solution": "need 计数 + window 计数 + matched 计数：右扩使 matched 达标，随后左缩并在失效前更新最小答案窗口。",
+      "time": "O(|s| + |t|)",
+      "space": "O(Σ)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-window-substring/"
+    },
+    {
+      "order": 34,
+      "problemId": 36,
+      "title": "有效的数独",
+      "englishTitle": "Valid Sudoku",
+      "category": "矩阵",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "哈希表",
+        "矩阵"
+      ],
+      "prompt": "面对「有效的数独」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "分别用行、列、3x3 宫的哈希集合记录已出现数字，出现重复即无效。",
+      "solution": "三重容器 row[i]/col[j]/box[i/3*3+j/3]；遍历非 '.' 数字，加入前先查重。",
+      "time": "O(1)（9x9 固定）",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/valid-sudoku/"
+    },
+    {
+      "order": 35,
+      "problemId": 54,
+      "title": "螺旋矩阵",
+      "englishTitle": "Spiral Matrix",
+      "category": "矩阵",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "矩阵",
+        "模拟"
+      ],
+      "prompt": "面对「螺旋矩阵」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "维护上下左右四个边界，按 右→下→左→上 循环收集，每走完一条边收缩对应边界。",
+      "solution": "top/bottom/left/right 指针；循环内四条边收集元素并收缩，直到越界。",
+      "time": "O(mn)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/spiral-matrix/"
+    },
+    {
+      "order": 36,
+      "problemId": 48,
+      "title": "旋转图像",
+      "englishTitle": "Rotate Image",
+      "category": "矩阵",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "数学",
+        "矩阵"
+      ],
+      "prompt": "面对「旋转图像」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "顺时针转 90° = 先沿主对角线转置，再水平镜像（反转每一行）。",
+      "solution": "先交换 matrix[i][j] 与 matrix[j][i]，再对每行做 reverse。",
+      "time": "O(n²)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/rotate-image/"
+    },
+    {
+      "order": 37,
+      "problemId": 73,
+      "title": "矩阵置零",
+      "englishTitle": "Set Matrix Zeroes",
+      "category": "矩阵",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "哈希表",
+        "矩阵"
+      ],
+      "prompt": "面对「矩阵置零」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用第一行与第一列作为「是否置零」的标记位，避免额外空间。",
+      "solution": "先记录首行/首列是否有 0；再用第一行第一列标记；随后把标记行/列置零，最后处理首行首列。",
+      "time": "O(mn)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/set-matrix-zeroes/"
+    },
+    {
+      "order": 38,
+      "problemId": 289,
+      "title": "生命游戏",
+      "englishTitle": "Game of Life",
+      "category": "矩阵",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "矩阵",
+        "模拟"
+      ],
+      "prompt": "面对「生命游戏」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用第二位记录下一状态，避免覆盖当前状态；最后统一右移一位输出。",
+      "solution": "遍历统计周围活细胞数，将下一状态写入第二位（如 2 表示 0→1）；最后全部右移。",
+      "time": "O(mn)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/game-of-life/"
+    },
+    {
+      "order": 39,
+      "problemId": 383,
+      "title": "赎金信",
+      "englishTitle": "Ransom Note",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "计数"
+      ],
+      "prompt": "面对「赎金信」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "统计 magazine 中字母可用数量，遍历 ransomNote 消耗，不够则 false。",
+      "solution": "int[26] 计数 magazine；遍历 ransomNote 减一，出现负数即 false。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/ransom-note/"
+    },
+    {
+      "order": 40,
+      "problemId": 205,
+      "title": "同构字符串",
+      "englishTitle": "Isomorphic Strings",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "字符串"
+      ],
+      "prompt": "面对「同构字符串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "需要 s→t 与 t→s 两个方向的映射都唯一（双射）。",
+      "solution": "两个 map 分别记录 s[i]→t[i]、t[i]→s[i]；不满足返回 false；也可比较首次出现位置。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/isomorphic-strings/"
+    },
+    {
+      "order": 41,
+      "problemId": 290,
+      "title": "单词规律",
+      "englishTitle": "Word Pattern",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "字符串"
+      ],
+      "prompt": "面对「单词规律」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "同 205，把 pattern 字符映射到 s 的单词，反之亦然。",
+      "solution": "拆分 s；两个 map 双向验证；单词数需与 pattern 长度一致。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/word-pattern/"
+    },
+    {
+      "order": 42,
+      "problemId": 242,
+      "title": "有效的字母异位词",
+      "englishTitle": "Valid Anagram",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "排序"
+      ],
+      "prompt": "面对「有效的字母异位词」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "字母异位词即字符构成完全相同，统计频次相等即可。",
+      "solution": "int[26] 对 s 加、对 t 减；非全 0 则 false；或排序后比较。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/valid-anagram/"
+    },
+    {
+      "order": 43,
+      "problemId": 49,
+      "title": "字母异位词分组",
+      "englishTitle": "Group Anagrams",
+      "category": "哈希与映射",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "哈希表",
+        "字符串"
+      ],
+      "prompt": "面对「字母异位词分组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "字母异位词排序后相同，以「排序结果」作为哈希键分组。",
+      "solution": "对每个字符串排序得到 key，用 map 把同 key 的串收集。",
+      "time": "O(n·L log L)",
+      "space": "O(n·L)",
+      "practiceUrl": "https://leetcode.cn/problems/group-anagrams/"
+    },
+    {
+      "order": 44,
+      "problemId": 1,
+      "title": "两数之和",
+      "englishTitle": "Two Sum",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「两数之和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "遍历数组时，把「值 → 下标」存进哈希表；对每个数先查它的补数 target - nums[i] 是否已经出现过。",
+      "solution": "一次遍历 + 哈希表：对每个元素先查询补数是否存在，存在则直接返回两个下标，否则将当前值存入哈希表。只需一趟扫描。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/two-sum/"
+    },
+    {
+      "order": 45,
+      "problemId": 202,
+      "title": "快乐数",
+      "englishTitle": "Happy Number",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "数学",
+        "双指针"
+      ],
+      "prompt": "面对「快乐数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "非快乐数会进入循环。用集合记录出现过的平方和检测循环（也可快慢指针）。",
+      "solution": "while n!=1 且未出现：求各位平方和；出现重复返回 false，到 1 返回 true。",
+      "time": "O(log n)",
+      "space": "O(log n)",
+      "practiceUrl": "https://leetcode.cn/problems/happy-number/"
+    },
+    {
+      "order": 46,
+      "problemId": 219,
+      "title": "存在重复元素 II",
+      "englishTitle": "Contains Duplicate II",
+      "category": "哈希与映射",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "哈希表",
+        "滑动窗口"
+      ],
+      "prompt": "面对「存在重复元素 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用 map 记录每个值最近的下标；当相同值的距离 ≤ k 返回 true。",
+      "solution": "map 值→下标；遍历若已存在且 i-map[val]<=k 返回 true，否则更新下标。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/contains-duplicate-ii/"
+    },
+    {
+      "order": 47,
+      "problemId": 128,
+      "title": "最长连续序列",
+      "englishTitle": "Longest Consecutive Sequence",
+      "category": "哈希与映射",
+      "difficulty": "进阶",
+      "tags": [
+        "并查集",
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「最长连续序列」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "把数放入集合；只从「序列起点」（x-1 不在集合）向后延展，才能保证 O(n)。",
+      "solution": "set 存所有数；仅当 x-1 不存在时再沿 x 逐个计数并更新最大长度。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/longest-consecutive-sequence/"
+    },
+    {
+      "order": 48,
+      "problemId": 228,
+      "title": "汇总区间",
+      "englishTitle": "Summary Ranges",
+      "category": "区间问题",
+      "difficulty": "基础",
+      "tags": [
+        "数组"
+      ],
+      "prompt": "面对「汇总区间」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "数组有序，只需判断相邻元素是否连续（差 1）来决定开闭区间。",
+      "solution": "遍历记录区间起点；nums[i+1]==nums[i]+1 则继续，否则输出当前区间（单值或 start->end）。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/summary-ranges/"
+    },
+    {
+      "order": 49,
+      "problemId": 56,
+      "title": "合并区间",
+      "englishTitle": "Merge Intervals",
+      "category": "区间问题",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "排序",
+        "快速排序"
+      ],
+      "prompt": "面对「合并区间」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "按左端点排序之后，问题就变成线性的了：只需要比较「当前已合并区间的 end」和「下一个区间的 start」。",
+      "solution": "按 start 排序后线性扫描：若 intervals[i].start ≤ 当前区间的 end 则合并（end 取二者较大值），否则新开一段。",
+      "time": "O(n log n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/merge-intervals/"
+    },
+    {
+      "order": 50,
+      "problemId": 57,
+      "title": "插入区间",
+      "englishTitle": "Insert Interval",
+      "category": "区间问题",
+      "difficulty": "进阶",
+      "tags": [
+        "数组"
+      ],
+      "prompt": "面对「插入区间」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "分三段：完全在 newInterval 之前的区间直接放入；合并重叠部分；再放入之后区间。",
+      "solution": "先收 end<newStart 的；再合并所有 start≤newEnd 的区间（取 min start、max end）；最后放剩余区间。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/insert-interval/"
+    },
+    {
+      "order": 51,
+      "problemId": 452,
+      "title": "用最少数量的箭引爆气球",
+      "englishTitle": "Minimum Number of Arrows to Burst Balloons",
+      "category": "区间问题",
+      "difficulty": "进阶",
+      "tags": [
+        "贪心",
+        "数组",
+        "排序"
+      ],
+      "prompt": "面对「用最少数量的箭引爆气球」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "按区间右端点排序，箭尽量射在最右端以覆盖最多的后续区间。",
+      "solution": "按 end 排序；若当前区间 start>上一箭的 x 则 +1 并更新 x=end，否则共用该箭。",
+      "time": "O(n log n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-number-of-arrows-to-burst-balloons/"
+    },
+    {
+      "order": 52,
+      "problemId": 20,
+      "title": "有效的括号",
+      "englishTitle": "Valid Parentheses",
+      "category": "栈",
+      "difficulty": "基础",
+      "tags": [
+        "栈",
+        "字符串",
+        "括号序列"
+      ],
+      "prompt": "面对「有效的括号」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "左括号一律入栈；遇到右括号时，检查栈顶是否是它对应的左括号。奇数长度可以直接判 false。",
+      "solution": "栈：左括号压栈；右括号弹出栈顶比对类型，不匹配即无效。扫描结束后栈为空才有效。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/valid-parentheses/"
+    },
+    {
+      "order": 53,
+      "problemId": 71,
+      "title": "简化路径",
+      "englishTitle": "Simplify Path",
+      "category": "栈",
+      "difficulty": "进阶",
+      "tags": [
+        "栈",
+        "字符串"
+      ],
+      "prompt": "面对「简化路径」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "按 '/' 拆分，用栈处理：'.' 跳过、'..' 弹出栈顶、其余入栈。",
+      "solution": "split('/') 遍历：空或 '.' 跳过；'..' 则非空时弹出；否则入栈；最后 '/' 连接。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/simplify-path/"
+    },
+    {
+      "order": 54,
+      "problemId": 155,
+      "title": "最小栈",
+      "englishTitle": "Min Stack",
+      "category": "栈",
+      "difficulty": "进阶",
+      "tags": [
+        "栈",
+        "设计"
+      ],
+      "prompt": "面对「最小栈」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用辅助栈同步存储「当前栈顶对应的最小值」。",
+      "solution": "主栈存全部值；minStack 每次 push 当前元素与栈顶较小者；pop 时两栈同时弹出。",
+      "time": "O(1) / 操作",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/min-stack/"
+    },
+    {
+      "order": 55,
+      "problemId": 150,
+      "title": "逆波兰表达式求值",
+      "englishTitle": "Evaluate Reverse Polish Notation",
+      "category": "栈",
+      "difficulty": "进阶",
+      "tags": [
+        "栈",
+        "数组",
+        "数学"
+      ],
+      "prompt": "面对「逆波兰表达式求值」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "数字入栈，遇运算符弹出两个操作数计算后压回。注意除法向零截断。",
+      "solution": "栈存数字；遇运算符弹出 b、a，按 op 计算（减法/除法注意顺序 a op b）后入栈；栈顶为结果。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/evaluate-reverse-polish-notation/"
+    },
+    {
+      "order": 56,
+      "problemId": 224,
+      "title": "基本计算器",
+      "englishTitle": "Basic Calculator",
+      "category": "栈",
+      "difficulty": "挑战",
+      "tags": [
+        "栈",
+        "递归",
+        "数学"
+      ],
+      "prompt": "面对「基本计算器」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用 sign 记录当前正负；遇 '(' 把「累计结果与 sign」入栈并重置，遇 ')' 弹出恢复。",
+      "solution": "维护 num/sign/result；'(' 时 push(result,sign) 并重置；')' 弹出并累加括号结果；运算符更新 sign。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/basic-calculator/"
+    },
+    {
+      "order": 57,
+      "problemId": 141,
+      "title": "环形链表",
+      "englishTitle": "Linked List Cycle",
+      "category": "链表",
+      "difficulty": "基础",
+      "tags": [
+        "哈希表",
+        "链表",
+        "双指针"
+      ],
+      "prompt": "面对「环形链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "快慢指针：快走两步、慢走一步，若有环二者必相遇。",
+      "solution": "slow 与 fast 从头出发；fast 到 null 则无环，快慢相遇则有环。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/linked-list-cycle/"
+    },
+    {
+      "order": 58,
+      "problemId": 2,
+      "title": "两数相加",
+      "englishTitle": "Add Two Numbers",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "递归",
+        "链表",
+        "数学"
+      ],
+      "prompt": "面对「两数相加」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从头开始逐位相加并处理进位，用一个 carry 贯穿两条链表。",
+      "solution": "遍历两链表+进位：当前位=(a+b+carry)%10，carry=/10；链表走完 carry 不为 0 则补新节点。",
+      "time": "O(max(m,n))",
+      "space": "O(max(m,n))",
+      "practiceUrl": "https://leetcode.cn/problems/add-two-numbers/"
+    },
+    {
+      "order": 59,
+      "problemId": 21,
+      "title": "合并两个有序链表",
+      "englishTitle": "Merge Two Sorted Lists",
+      "category": "链表",
+      "difficulty": "基础",
+      "tags": [
+        "递归",
+        "链表"
+      ],
+      "prompt": "面对「合并两个有序链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "建一个哑结点 dummy 当锚点，双指针每次比较两链表当前节点的值，取小的接到结果尾部。",
+      "solution": "虚拟头结点 + 双指针：比较 l1/l2 当前值，小者接入结果并前进一步；一条走完后把另一条整体接上。",
+      "time": "O(m+n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/merge-two-sorted-lists/"
+    },
+    {
+      "order": 60,
+      "problemId": 138,
+      "title": "随机链表的复制",
+      "englishTitle": "Copy List with Random Pointer",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "哈希表",
+        "链表"
+      ],
+      "prompt": "面对「随机链表的复制」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先用哈希表建立 旧节点→新节点 映射，再第二遍按映射连接 next 与 random。",
+      "solution": "两遍扫描：第一遍建映射并创建新节点；第二遍根据 map 填充 next/random。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/copy-list-with-random-pointer/"
+    },
+    {
+      "order": 61,
+      "problemId": 92,
+      "title": "反转链表 II",
+      "englishTitle": "Reverse Linked List II",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "链表"
+      ],
+      "prompt": "面对「反转链表 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "快进到 left 前一个位置，用「头插法」把区间内节点逐个移到区间头部。",
+      "solution": "dummy；快进到 left-1 的 prev；cur 指向 left；重复 right-left 次：把 cur.next 摘下插到 prev 后。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/reverse-linked-list-ii/"
+    },
+    {
+      "order": 62,
+      "problemId": 25,
+      "title": "K 个一组翻转链表",
+      "englishTitle": "Reverse Nodes in k-Group",
+      "category": "链表",
+      "difficulty": "挑战",
+      "tags": [
+        "递归",
+        "链表"
+      ],
+      "prompt": "面对「K 个一组翻转链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "每次检查是否有 k 个节点，有则反转该段并接入，没有则保留原顺序。",
+      "solution": "dummy+prev；count k 个节点反转，prev 接到翻转后的头，末尾作为下一组 prev。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/reverse-nodes-in-k-group/"
+    },
+    {
+      "order": 63,
+      "problemId": 19,
+      "title": "删除链表的倒数第 N 个结点",
+      "englishTitle": "Remove Nth Node From End of List",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "链表",
+        "双指针"
+      ],
+      "prompt": "面对「删除链表的倒数第 N 个结点」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "快指针先走 n+1 步，再与慢指针同步前进；快到末尾时慢正好在倒数第 n 个前一个。",
+      "solution": "dummy + fast/slow；fast 先移 n+1；再同步走；slow.next=slow.next.next。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/remove-nth-node-from-end-of-list/"
+    },
+    {
+      "order": 64,
+      "problemId": 82,
+      "title": "删除排序链表中的重复元素 II",
+      "englishTitle": "Remove Duplicates from Sorted List II",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "链表",
+        "双指针"
+      ],
+      "prompt": "面对「删除排序链表中的重复元素 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用 dummy；遇重复值整段跳过，指针直接跳到第一个不同的值。",
+      "solution": "cur 从 dummy；当 cur.next 与 cur.next.next 值相等，记 val=cur.next.val，循环跳过所有 val 节点；否则后移。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/remove-duplicates-from-sorted-list-ii/"
+    },
+    {
+      "order": 65,
+      "problemId": 61,
+      "title": "旋转链表",
+      "englishTitle": "Rotate List",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "链表",
+        "双指针"
+      ],
+      "prompt": "面对「旋转链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先求长度并成环，让指针走 len-k%len 到达新尾，从该处断开作为新头。",
+      "solution": "计算 len，k%=len；尾部接回头部成环；走 len-k 步到新尾，断开其 next 作为新头。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/rotate-list/"
+    },
+    {
+      "order": 66,
+      "problemId": 86,
+      "title": "分隔链表",
+      "englishTitle": "Partition List",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "链表",
+        "双指针"
+      ],
+      "prompt": "面对「分隔链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用两个虚拟头分别收集 <x 与 ≥x 的节点，最后拼接。",
+      "solution": "small/large 两个 dummy；遍历原链表按值放入对应链；large 尾部置 null，small 尾部接 large.next。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/partition-list/"
+    },
+    {
+      "order": 67,
+      "problemId": 146,
+      "title": "LRU 缓存",
+      "englishTitle": "LRU Cache",
+      "category": "链表",
+      "difficulty": "进阶",
+      "tags": [
+        "设计",
+        "哈希表",
+        "链表"
+      ],
+      "prompt": "面对「LRU 缓存」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "哈希表负责 O(1) 定位，双向链表负责维护使用顺序（头部最新、尾部最旧），两者各司其职。",
+      "solution": "Map(key → node) + 双向链表：get 命中则移到头部；put 存在则更新并移头，不存在则在头部新建，超容量删除尾节点。",
+      "time": "O(1) / op",
+      "space": "O(capacity)",
+      "practiceUrl": "https://leetcode.cn/problems/lru-cache/"
+    },
+    {
+      "order": 68,
+      "problemId": 104,
+      "title": "二叉树的最大深度",
+      "englishTitle": "Maximum Depth of Binary Tree",
+      "category": "二叉树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「二叉树的最大深度」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "深度 = 1 + max(左子树深, 右子树深)，空树为 0。",
+      "solution": "递归返回 max(左,右)+1；也可用层序遍历计数。",
+      "time": "O(n)",
+      "space": "O(n)（树高）",
+      "practiceUrl": "https://leetcode.cn/problems/maximum-depth-of-binary-tree/"
+    },
+    {
+      "order": 69,
+      "problemId": 100,
+      "title": "相同的树",
+      "englishTitle": "Same Tree",
+      "category": "二叉树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「相同的树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "两树相同 = 根值相同 + 左子树相同 + 右子树相同。",
+      "solution": "递归：都空→true；一个空→false；否则比较 val 并递归判断左右。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/same-tree/"
+    },
+    {
+      "order": 70,
+      "problemId": 226,
+      "title": "翻转二叉树",
+      "englishTitle": "Invert Binary Tree",
+      "category": "二叉树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「翻转二叉树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "递归交换每个节点的左右子树。",
+      "solution": "递归：swap(left,right) 后翻转左右子树；或用 BFS 逐层交换。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/invert-binary-tree/"
+    },
+    {
+      "order": 71,
+      "problemId": 101,
+      "title": "对称二叉树",
+      "englishTitle": "Symmetric Tree",
+      "category": "二叉树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「对称二叉树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "对称 = 左孩子的左子树 == 右孩子的右子树，且 左孩子的右子树 == 右孩子的左子树。",
+      "solution": "辅助 isMirror(a,b)：都空→true；都非空且值相等则递归比较 a.left vs b.right 与 a.right vs b.left。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/symmetric-tree/"
+    },
+    {
+      "order": 72,
+      "problemId": 105,
+      "title": "从前序与中序遍历序列构造二叉树",
+      "englishTitle": "Construct Binary Tree from Preorder and Inorder Traversal",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「从前序与中序遍历序列构造二叉树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先序第一个元素为根；用根在中序的位置划分左右子树区间，递归构造。",
+      "solution": "map 存中序值→下标；递归以 preorder[preL..] 为根、midPos 分割 inorder，左右递归。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"
+    },
+    {
+      "order": 73,
+      "problemId": 106,
+      "title": "从中序与后序遍历序列构造二叉树",
+      "englishTitle": "Construct Binary Tree from Inorder and Postorder Traversal",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「从中序与后序遍历序列构造二叉树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "后序最后一个元素为根，用它在 inorder 中划分左右子树。",
+      "solution": "postorder 末尾为根，map 定位中序下标；同步推进中序/后序区间递归构造。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/construct-binary-tree-from-inorder-and-postorder-traversal/"
+    },
+    {
+      "order": 74,
+      "problemId": 117,
+      "title": "填充每个节点的下一个右侧节点指针 II",
+      "englishTitle": "Populating Next Right Pointers in Each Node II",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「填充每个节点的下一个右侧节点指针 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "利用当前层已建立的 next 作为「队列」遍历，无需额外空间。",
+      "solution": "维护 dummy 串起下一层；逐层用 next 连接左右/兄弟的孩子，再推进。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/populating-next-right-pointers-in-each-node-ii/"
+    },
+    {
+      "order": 75,
+      "problemId": 114,
+      "title": "二叉树展开为链表",
+      "englishTitle": "Flatten Binary Tree to Linked List",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "栈",
+        "树",
+        "深度优先搜索"
+      ],
+      "prompt": "面对「二叉树展开为链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先展平右、再展平左；把左子树接到根与右子树之间。或用先序前驱法。",
+      "solution": "递归：right=flatten(right), left=flatten(left)；根.right=left，左子树末端的 next 接右子树，根.left=null。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/flatten-binary-tree-to-linked-list/"
+    },
+    {
+      "order": 76,
+      "problemId": 112,
+      "title": "路径总和",
+      "englishTitle": "Path Sum",
+      "category": "二叉树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「路径总和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从根一路减 targetSum；到叶子时判断剩余值是否恰好为 0。",
+      "solution": "递归：叶子判断 targetSum==node.val；否则对左右用 targetSum-node.val 递归。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/path-sum/"
+    },
+    {
+      "order": 77,
+      "problemId": 129,
+      "title": "求根节点到叶节点数字之和",
+      "englishTitle": "Sum Root to Leaf Numbers",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "二叉树"
+      ],
+      "prompt": "面对「求根节点到叶节点数字之和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "沿路径维护「当前构成的数」，到叶子时累加。",
+      "solution": "递归带 cur=cur*10+node.val；到叶子累加进总和；返回左右子树之和。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/sum-root-to-leaf-numbers/"
+    },
+    {
+      "order": 78,
+      "problemId": 124,
+      "title": "二叉树中的最大路径和",
+      "englishTitle": "Binary Tree Maximum Path Sum",
+      "category": "二叉树",
+      "difficulty": "挑战",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "动态规划"
+      ],
+      "prompt": "面对「二叉树中的最大路径和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "后序遍历：每个节点用 node+左单边+右单边更新答案，返回 node+max(左单边,右单边) 给父级（负数视为 0）。",
+      "solution": "后序：左右单边最大路径（负值取 0）；ans=max(ans, node+left+right)；返回 node+max(left,right)。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/binary-tree-maximum-path-sum/"
+    },
+    {
+      "order": 79,
+      "problemId": 173,
+      "title": "二叉搜索树迭代器",
+      "englishTitle": "Binary Search Tree Iterator",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "栈",
+        "树",
+        "设计"
+      ],
+      "prompt": "面对「二叉搜索树迭代器」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用栈模拟中序：初使最左链入栈；next 弹出一个后，再压入其右子树的最左链。",
+      "solution": "构造时最左链入栈；hasNext=栈非空；next 弹栈顶 p 返回其值，并把 p.right 的最左链压栈。",
+      "time": "均摊 O(1)",
+      "space": "O(h)",
+      "practiceUrl": "https://leetcode.cn/problems/binary-search-tree-iterator/"
+    },
+    {
+      "order": 80,
+      "problemId": 222,
+      "title": "完全二叉树的节点个数",
+      "englishTitle": "Count Complete Tree Nodes",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "位运算",
+        "树",
+        "二分查找"
+      ],
+      "prompt": "面对「完全二叉树的节点个数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "完全二叉树比较左右子树深度：满树节点数=2^h-1，再对非满一侧递归。",
+      "solution": "求左右深度 dl,dr；相等则左满：节点=2^dl-1+1+count(right)；否则右满：count(left)+2^dr。",
+      "time": "O(log² n)",
+      "space": "O(h)",
+      "practiceUrl": "https://leetcode.cn/problems/count-complete-tree-nodes/"
+    },
+    {
+      "order": 81,
+      "problemId": 236,
+      "title": "二叉树的最近公共祖先",
+      "englishTitle": "Lowest Common Ancestor of a Binary Tree",
+      "category": "二叉树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "二叉树"
+      ],
+      "prompt": "面对「二叉树的最近公共祖先」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "当前节点为空或等于 p/q 直接返回；左右递归，两边都有则当前即 LCA。",
+      "solution": "递归：左空返回右，右空返回左，两边非空返回 node。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-tree/"
+    },
+    {
+      "order": 82,
+      "problemId": 199,
+      "title": "二叉树的右视图",
+      "englishTitle": "Binary Tree Right Side View",
+      "category": "树的层次遍历",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「二叉树的右视图」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "层序遍历每层取最后一个节点；或 DFS 先访问右孩子，每层第一个即右视图。",
+      "solution": "BFS 每层末尾记入；或 DFS 记录每层首次访问（先右后左）。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/binary-tree-right-side-view/"
+    },
+    {
+      "order": 83,
+      "problemId": 637,
+      "title": "二叉树的层平均值",
+      "englishTitle": "Average of Levels in Binary Tree",
+      "category": "树的层次遍历",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「二叉树的层平均值」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "层序遍历每层求和再除以该层数量。",
+      "solution": "BFS 按层累计 sum 与 count，push 平均。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/average-of-levels-in-binary-tree/"
+    },
+    {
+      "order": 84,
+      "problemId": 102,
+      "title": "二叉树的层序遍历",
+      "englishTitle": "Binary Tree Level Order Traversal",
+      "category": "树的层次遍历",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "广度优先搜索",
+        "二叉树"
+      ],
+      "prompt": "面对「二叉树的层序遍历」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "队列 BFS 的经典分层技巧：每轮循环开始时记下 queue.length，这个数字恰好就是当前层的节点个数。",
+      "solution": "BFS：根入队；每层弹出 size 次，依次收集值并把左右子节点入队；一层收完推入结果。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/binary-tree-level-order-traversal/"
+    },
+    {
+      "order": 85,
+      "problemId": 103,
+      "title": "二叉树的锯齿形层序遍历",
+      "englishTitle": "Binary Tree Zigzag Level Order Traversal",
+      "category": "树的层次遍历",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "广度优先搜索",
+        "二叉树"
+      ],
+      "prompt": "面对「二叉树的锯齿形层序遍历」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "层序遍历，偶数层从左到右、奇数层从右到左（用标志翻转）。",
+      "solution": "BFS 收集每层；奇数层则 reverse 后加入结果。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/binary-tree-zigzag-level-order-traversal/"
+    },
+    {
+      "order": 86,
+      "problemId": 530,
+      "title": "二叉搜索树的最小绝对差",
+      "englishTitle": "Minimum Absolute Difference in BST",
+      "category": "二叉搜索树",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "广度优先搜索"
+      ],
+      "prompt": "面对「二叉搜索树的最小绝对差」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "BST 中序得升序序列，最小差值必在相邻两节点之间。",
+      "solution": "中序维护 prev，求当前与 prev 的最小差值并更新 prev。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-absolute-difference-in-bst/"
+    },
+    {
+      "order": 87,
+      "problemId": 230,
+      "title": "二叉搜索树中第 K 小的元素",
+      "englishTitle": "Kth Smallest Element in a BST",
+      "category": "二叉搜索树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "二叉搜索树"
+      ],
+      "prompt": "面对「二叉搜索树中第 K 小的元素」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "中序遍历的第 k 个元素即第 k 小。",
+      "solution": "中序遍历计数到 k 返回；节点带 size 时可二分优化。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/kth-smallest-element-in-a-bst/"
+    },
+    {
+      "order": 88,
+      "problemId": 98,
+      "title": "验证二叉搜索树",
+      "englishTitle": "Validate Binary Search Tree",
+      "category": "二叉搜索树",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "深度优先搜索",
+        "二叉搜索树"
+      ],
+      "prompt": "面对「验证二叉搜索树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "需保证整棵子树落在 (lower, upper) 范围内，而不只是比较子节点。",
+      "solution": "递归传下限上限；检查 node.val 落界；对左右分别用 [lower,val]、[val,upper] 递归。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/validate-binary-search-tree/"
+    },
+    {
+      "order": 89,
+      "problemId": 200,
+      "title": "岛屿数量",
+      "englishTitle": "Number of Islands",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "并查集"
+      ],
+      "prompt": "面对「岛屿数量」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "外层扫网格，碰到没访问过的 '1' 就以它为起点做 DFS/BFS，把整块陆地都「淹没」成 '0'，计数加一。",
+      "solution": "Flood Fill：双重循环找到未沉岛的 '1' → 计数+1 → 从该点 DFS 四连通扩散沉岛。",
+      "time": "O(mn)",
+      "space": "O(mn)",
+      "practiceUrl": "https://leetcode.cn/problems/number-of-islands/"
+    },
+    {
+      "order": 90,
+      "problemId": 130,
+      "title": "被围绕的区域",
+      "englishTitle": "Surrounded Regions",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "并查集"
+      ],
+      "prompt": "面对「被围绕的区域」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从边缘的 O 做 DFS/BFS 标记为安全，其余 O 才被围绕，转成 X。",
+      "solution": "对四周边界 O flood fill 标记成 'T'；遍历把 O→X、T→O。",
+      "time": "O(mn)",
+      "space": "O(mn)",
+      "practiceUrl": "https://leetcode.cn/problems/surrounded-regions/"
+    },
+    {
+      "order": 91,
+      "problemId": 133,
+      "title": "克隆图",
+      "englishTitle": "Clone Graph",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "图"
+      ],
+      "prompt": "面对「克隆图」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用 map 记录 原节点→克隆节点 避免重复克隆；邻接递归克隆。",
+      "solution": "DFS：node 已克隆则返回；否则创建新节点并入 map，递归克隆邻居填入 neighbors。",
+      "time": "O(n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/clone-graph/"
+    },
+    {
+      "order": 92,
+      "problemId": 399,
+      "title": "除法求值",
+      "englishTitle": "Evaluate Division",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "并查集"
+      ],
+      "prompt": "面对「除法求值」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "把 a/b=value 看为边 a→b（权重 value）、b→a（权重 1/value）；查询即求路径权重之积。",
+      "solution": "建带权图，DFS 从起点找终点并累积比值；找到返回，否则 -1。",
+      "time": "O(V+E)",
+      "space": "O(V)",
+      "practiceUrl": "https://leetcode.cn/problems/evaluate-division/"
+    },
+    {
+      "order": 93,
+      "problemId": 207,
+      "title": "课程表",
+      "englishTitle": "Course Schedule",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "图"
+      ],
+      "prompt": "面对「课程表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "判断有向图是否有环：拓扑排序处理到的课程数是否等于总课程数。",
+      "solution": "建图与入度表；queue 存入度 0 的课程；逐个出队减少后继入度；处理数==numCourses 则无环。",
+      "time": "O(V+E)",
+      "space": "O(V+E)",
+      "practiceUrl": "https://leetcode.cn/problems/course-schedule/"
+    },
+    {
+      "order": 94,
+      "problemId": 210,
+      "title": "课程表 II",
+      "englishTitle": "Course Schedule II",
+      "category": "图",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "广度优先搜索",
+        "图"
+      ],
+      "prompt": "面对「课程表 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "在 207 基础上，把每个入度为 0 出队的课程按序记录即为一条拓扑序。",
+      "solution": "Kahn 算法；出队顺序存进结果；长度==numCourses 返回之，否则空数组。",
+      "time": "O(V+E)",
+      "space": "O(V+E)",
+      "practiceUrl": "https://leetcode.cn/problems/course-schedule-ii/"
+    },
+    {
+      "order": 95,
+      "problemId": 909,
+      "title": "蛇梯棋",
+      "englishTitle": "Snakes and Ladders",
+      "category": "图的广度优先搜索",
+      "difficulty": "进阶",
+      "tags": [
+        "广度优先搜索",
+        "数组",
+        "矩阵"
+      ],
+      "prompt": "面对「蛇梯棋」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "棋盘编号 1..n²，从 1 出发 BFS，每步可前进 1-6 格；注意蛇梯传送与锯齿坐标换算。",
+      "solution": "编号转 (r,c)（转行交替）；BFS 队列存编号与步数；遇到目标返回步数。",
+      "time": "O(n²)",
+      "space": "O(n²)",
+      "practiceUrl": "https://leetcode.cn/problems/snakes-and-ladders/"
+    },
+    {
+      "order": 96,
+      "problemId": 433,
+      "title": "最小基因变化",
+      "englishTitle": "Minimum Genetic Mutation",
+      "category": "图的广度优先搜索",
+      "difficulty": "进阶",
+      "tags": [
+        "广度优先搜索",
+        "哈希表",
+        "字符串"
+      ],
+      "prompt": "面对「最小基因变化」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "每次改一个字符且须在 bank 中——「最短路径」用 BFS。",
+      "solution": "BFS 从 start 出发，对 8 个位置尝试替换 A/C/G/T；在 bank 且未访问则入队；层数即变化次数。",
+      "time": "O(L·4·bank)",
+      "space": "O(bank)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-genetic-mutation/"
+    },
+    {
+      "order": 97,
+      "problemId": 127,
+      "title": "单词接龙",
+      "englishTitle": "Word Ladder",
+      "category": "图的广度优先搜索",
+      "difficulty": "挑战",
+      "tags": [
+        "广度优先搜索",
+        "哈希表",
+        "字符串"
+      ],
+      "prompt": "面对「单词接龙」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "单词每次变一个字母，找最短转换——BFS 逐层扩散，层数即次数。",
+      "solution": "BFS 从 beginWord 出发；逐位置替换 a-z 得候选；候选在 wordDict 且未访问则入队；到 endWord 返回层数。",
+      "time": "O(n·L·26)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/word-ladder/"
+    },
+    {
+      "order": 98,
+      "problemId": 208,
+      "title": "实现 Trie (前缀树)",
+      "englishTitle": "Implement Trie (Prefix Tree)",
+      "category": "字典树",
+      "difficulty": "进阶",
+      "tags": [
+        "设计",
+        "字典树",
+        "哈希表"
+      ],
+      "prompt": "面对「实现 Trie (前缀树)」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "每个节点含 children[26] 与 isEnd；insert 逐字符建节点；search 需匹配到 isEnd；startsWith 只需路径存在。",
+      "solution": "TrieNode{children, isEnd}；insert 沿路径创建；search 沿路径且最后 isEnd；startsWith 判断路径存在。",
+      "time": "O(L) / 操作",
+      "space": "O(节点×26)",
+      "practiceUrl": "https://leetcode.cn/problems/implement-trie-prefix-tree/"
+    },
+    {
+      "order": 99,
+      "problemId": 211,
+      "title": "添加与搜索单词 - 数据结构设计",
+      "englishTitle": "Design Add and Search Words Data Structure",
+      "category": "字典树",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "设计",
+        "字典树"
+      ],
+      "prompt": "面对「添加与搜索单词 - 数据结构设计」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "同 Trie；但 search 中 '.' 需递归遍历所有子节点。",
+      "solution": "Trie 存词；search 遇 '.' 遍历全部 children 递归，否则沿路径；能到 isEnd 即 true。",
+      "time": "搜索至 O(26^L)",
+      "space": "O(节点)",
+      "practiceUrl": "https://leetcode.cn/problems/design-add-and-search-words-data-structure/"
+    },
+    {
+      "order": 100,
+      "problemId": 212,
+      "title": "单词搜索 II",
+      "englishTitle": "Word Search II",
+      "category": "字典树",
+      "difficulty": "挑战",
+      "tags": [
+        "字典树",
+        "数组",
+        "字符串"
+      ],
+      "prompt": "面对「单词搜索 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "把所有 words 建字典树，网格 DFS 沿树匹配前缀，命中即收集（避免逐词搜索）。",
+      "solution": "建 Trie；对 grid 每格 DFS 沿 Trie 匹配；命中词入结果并从 Trie 删除防重复；visited 防回头。",
+      "time": "O(网格×长度)",
+      "space": "O(词长)",
+      "practiceUrl": "https://leetcode.cn/problems/word-search-ii/"
+    },
+    {
+      "order": 101,
+      "problemId": 17,
+      "title": "电话号码的字母组合",
+      "englishTitle": "Letter Combinations of a Phone Number",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "哈希表",
+        "字符串",
+        "回溯"
+      ],
+      "prompt": "面对「电话号码的字母组合」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "数字→字母字符串，回溯逐位为每个数字选择一个字母。",
+      "solution": "map 数字→字母；dfs 长度等于 digits 记录结果；否则取当前数字字母逐个递归。",
+      "time": "O(4^n·n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/letter-combinations-of-a-phone-number/"
+    },
+    {
+      "order": 102,
+      "problemId": 77,
+      "title": "组合",
+      "englishTitle": "Combinations",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "回溯"
+      ],
+      "prompt": "面对「组合」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "按升序取数避免重复；递归地选择下一个更大的数。",
+      "solution": "dfs(start)：path 满 k 记录；否则从 start 到 n 选择并递归，最后回溯。",
+      "time": "O(C(n,k)·k)",
+      "space": "O(k)",
+      "practiceUrl": "https://leetcode.cn/problems/combinations/"
+    },
+    {
+      "order": 103,
+      "problemId": 46,
+      "title": "全排列",
+      "englishTitle": "Permutations",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "回溯"
+      ],
+      "prompt": "面对「全排列」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "回溯模板：每一层从「还没用过」的数字里挑一个放进 path，递归到底收集答案，回溯时撤销选择。",
+      "solution": "used[] 标记 + path 收集：递归深度等于数组长度时把 path 快照推入答案；返回前恢复 used 与 path 现场。",
+      "time": "O(n × n!)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/permutations/"
+    },
+    {
+      "order": 104,
+      "problemId": 39,
+      "title": "组合总和",
+      "englishTitle": "Combination Sum",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "回溯"
+      ],
+      "prompt": "面对「组合总和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "可无限重复取，递归时下标不变（仍可取 candidates[i]）。",
+      "solution": "排序；dfs(i, remain)：remain==0 记录；否则从 i 起，remain≥candidates[j] 则选它并递归 j，再回溯。",
+      "time": "O(组合数×n)",
+      "space": "O(target)",
+      "practiceUrl": "https://leetcode.cn/problems/combination-sum/"
+    },
+    {
+      "order": 105,
+      "problemId": 52,
+      "title": "N 皇后 II",
+      "englishTitle": "N-Queens II",
+      "category": "回溯",
+      "difficulty": "挑战",
+      "tags": [
+        "回溯",
+        "X 算法"
+      ],
+      "prompt": "面对「N 皇后 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "逐行放皇后，用三个集合记录占用的列与两条对角线。",
+      "solution": "dfs(row)：row==n 计数+1；列 cols、主对角线 row-col、副对角线 row+col 查重；合法则放置并递归，再撤销。",
+      "time": "O(n!)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/n-queens-ii/"
+    },
+    {
+      "order": 106,
+      "problemId": 22,
+      "title": "括号生成",
+      "englishTitle": "Generate Parentheses",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "字符串",
+        "动态规划",
+        "回溯"
+      ],
+      "prompt": "面对「括号生成」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "记录已用左/右括号数：左<n 可加左；右<左 才可加右。",
+      "solution": "dfs(s,left,right)：长度 2n 记录；else 左<n 递归加左，right<left 递归加右。",
+      "time": "O(卡特兰数×n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/generate-parentheses/"
+    },
+    {
+      "order": 107,
+      "problemId": 79,
+      "title": "单词搜索",
+      "englishTitle": "Word Search",
+      "category": "回溯",
+      "difficulty": "进阶",
+      "tags": [
+        "深度优先搜索",
+        "数组",
+        "字符串"
+      ],
+      "prompt": "面对「单词搜索」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从每个匹配首字母的格子 DFS 沿上下左右找下一个字符，用标记避免重复使用。",
+      "solution": "双重循环找起点；DFS 匹配 word[pos]，临时标记（如改 '#'）防回头，回溯恢复；命中全串返回 true。",
+      "time": "O(mn·3^L)",
+      "space": "O(L)",
+      "practiceUrl": "https://leetcode.cn/problems/word-search/"
+    },
+    {
+      "order": 108,
+      "problemId": 108,
+      "title": "将有序数组转换为二叉搜索树",
+      "englishTitle": "Convert Sorted Array to Binary Search Tree",
+      "category": "分治",
+      "difficulty": "基础",
+      "tags": [
+        "树",
+        "二叉搜索树",
+        "数组"
+      ],
+      "prompt": "面对「将有序数组转换为二叉搜索树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "取中间元素为根，左右子数组分别递归构造，天然平衡。",
+      "solution": "递归(lo,hi)：mid=lo+(hi-lo)/2 为根，左=递归(lo,mid-1)，右=递归(mid+1,hi)。",
+      "time": "O(n)",
+      "space": "O(log n)",
+      "practiceUrl": "https://leetcode.cn/problems/convert-sorted-array-to-binary-search-tree/"
+    },
+    {
+      "order": 109,
+      "problemId": 148,
+      "title": "排序链表",
+      "englishTitle": "Sort List",
+      "category": "分治",
+      "difficulty": "进阶",
+      "tags": [
+        "链表",
+        "双指针",
+        "分治"
+      ],
+      "prompt": "面对「排序链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "快慢指针找中点分裂成两个子链表，递归排序再合并。",
+      "solution": "split 找中点并断开；对左右递归；再 merge 两个有序链表。",
+      "time": "O(n log n)",
+      "space": "O(log n)",
+      "practiceUrl": "https://leetcode.cn/problems/sort-list/"
+    },
+    {
+      "order": 110,
+      "problemId": 427,
+      "title": "建立四叉树",
+      "englishTitle": "Construct Quad Tree",
+      "category": "分治",
+      "difficulty": "进阶",
+      "tags": [
+        "树",
+        "数组",
+        "分治"
+      ],
+      "prompt": "面对「建立四叉树」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "检查当前子网格是否全 0 或全 1；是则叶子，否则分四块递归。",
+      "solution": "helper(x,y,size)：全同返回叶子；否则分四个子网格递归；可用前缀和优化全同判断。",
+      "time": "O(n²·log n)",
+      "space": "O(log n)",
+      "practiceUrl": "https://leetcode.cn/problems/construct-quad-tree/"
+    },
+    {
+      "order": 111,
+      "problemId": 23,
+      "title": "合并 K 个升序链表",
+      "englishTitle": "Merge k Sorted Lists",
+      "category": "分治",
+      "difficulty": "挑战",
+      "tags": [
+        "链表",
+        "分治",
+        "堆（优先队列）"
+      ],
+      "prompt": "面对「合并 K 个升序链表」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "用一个小顶堆把所有链表头放入，每次弹出最小并对该链表下一个入队。",
+      "solution": "小根堆存 (val, node)；初始各头入堆；每 pop 接到结果，next 非空则入堆。",
+      "time": "O(N log k)",
+      "space": "O(k)",
+      "practiceUrl": "https://leetcode.cn/problems/merge-k-sorted-lists/"
+    },
+    {
+      "order": 112,
+      "problemId": 53,
+      "title": "最大子数组和",
+      "englishTitle": "Maximum Subarray",
+      "category": "线性动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "分治",
+        "动态规划"
+      ],
+      "prompt": "面对「最大子数组和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i] 表示「以 i 结尾」的最大子段和：dp[i] = max(nums[i], dp[i-1] + nums[i])——前面累积为负时果断另起炉灶。",
+      "solution": "Kadane 算法：一遍扫描维护以当前元素结尾的最大子段和与全局最大值，空间可压到一个变量。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/maximum-subarray/"
+    },
+    {
+      "order": 113,
+      "problemId": 918,
+      "title": "环形子数组的最大和",
+      "englishTitle": "Maximum Sum Circular Subarray",
+      "category": "线性动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "队列",
+        "数组",
+        "分治"
+      ],
+      "prompt": "面对「环形子数组的最大和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "最大环形和 = max(普通最大子段和, 总和 - 最小子段和)；注意全负情况。",
+      "solution": "Kadane 求最大与最小子段和；若 max<0 直接返回 max（全负），否则取 max(max, total-min)。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/maximum-sum-circular-subarray/"
+    },
+    {
+      "order": 114,
+      "problemId": 35,
+      "title": "搜索插入位置",
+      "englishTitle": "Search Insert Position",
+      "category": "二分查找",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "二分查找"
+      ],
+      "prompt": "面对「搜索插入位置」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "找第一个 ≥ target 的位置，即二分下界 lower_bound。",
+      "solution": "二分 lo,hi；mid≥target 则 hi=mid，否则 lo=mid+1；返回 lo。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/search-insert-position/"
+    },
+    {
+      "order": 115,
+      "problemId": 74,
+      "title": "搜索二维矩阵",
+      "englishTitle": "Search a 2D Matrix",
+      "category": "二分查找",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找",
+        "矩阵"
+      ],
+      "prompt": "面对「搜索二维矩阵」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "各行首大于上行末，整体可看作一个有序一维数组做二分。",
+      "solution": "mid 映射：r=mid/n, c=mid%n；二分比较 matrix[r][c]。",
+      "time": "O(log(mn))",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/search-a-2d-matrix/"
+    },
+    {
+      "order": 116,
+      "problemId": 162,
+      "title": "寻找峰值",
+      "englishTitle": "Find Peak Element",
+      "category": "二分查找",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找"
+      ],
+      "prompt": "面对「寻找峰值」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "比较 mid 与 mid+1：若 nums[mid]<nums[mid+1] 峰在右半，否则在左半（含 mid）。",
+      "solution": "lo,hi；mid 中；若 nums[mid]>nums[mid+1] 则 hi=mid，否则 lo=mid+1；返回 lo。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/find-peak-element/"
+    },
+    {
+      "order": 117,
+      "problemId": 33,
+      "title": "搜索旋转排序数组",
+      "englishTitle": "Search in Rotated Sorted Array",
+      "category": "二分查找",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找"
+      ],
+      "prompt": "面对「搜索旋转排序数组」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "二分取 mid 后，[l..mid] 和 [mid..r] 至少有一半是有序的。先判断哪半有序，再看 target 是否落在有序的那半边。",
+      "solution": "改良二分：若左半有序（nums[l] ≤ nums[mid]），target 在其中则收缩右边界，否则去右半；对称处理右半有序的情况。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/search-in-rotated-sorted-array/"
+    },
+    {
+      "order": 118,
+      "problemId": 34,
+      "title": "在排序数组中查找元素的第一个和最后一个位置",
+      "englishTitle": "Find First and Last Position of Element in Sorted Array",
+      "category": "二分查找",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找"
+      ],
+      "prompt": "面对「在排序数组中查找元素的第一个和最后一个位置」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "分别二分找「第一个 ≥target」与「最后一个 ≤target」的位置。",
+      "solution": "两次二分：lowerBound(target) 与 lowerBound(target+1)-1；检查是否存在。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/"
+    },
+    {
+      "order": 119,
+      "problemId": 153,
+      "title": "寻找旋转排序数组中的最小值",
+      "englishTitle": "Find Minimum in Rotated Sorted Array",
+      "category": "二分查找",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找"
+      ],
+      "prompt": "面对「寻找旋转排序数组中的最小值」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "若 nums[mid]>nums[hi] 最小值在右半，否则在左半或 mid。",
+      "solution": "lo,hi；用 nums[mid] 与 nums[hi] 比较收缩，最后返回 nums[lo]。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/find-minimum-in-rotated-sorted-array/"
+    },
+    {
+      "order": 120,
+      "problemId": 4,
+      "title": "寻找两个正序数组的中位数",
+      "englishTitle": "Median of Two Sorted Arrays",
+      "category": "二分查找",
+      "difficulty": "挑战",
+      "tags": [
+        "数组",
+        "二分查找",
+        "分治"
+      ],
+      "prompt": "面对「寻找两个正序数组的中位数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "在较短的数组上二分「分割线」位置，让左侧元素总数恰为一半，且两数组交叉满足 maxL ≤ minR。",
+      "solution": "短数组二分 i，j = (m+n+1)/2 − i；校验 A[i-1] ≤ B[j] 且 B[j-1] ≤ A[i]。满足后：总数奇取左侧最大，偶取左最大与右最小的均值。",
+      "time": "O(log min(m,n))",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/median-of-two-sorted-arrays/"
+    },
+    {
+      "order": 121,
+      "problemId": 215,
+      "title": "数组中的第K个最大元素",
+      "englishTitle": "Kth Largest Element in an Array",
+      "category": "堆与优先队列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "分治",
+        "快速选择"
+      ],
+      "prompt": "面对「数组中的第K个最大元素」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "两条路：① 维护大小为 k 的小顶堆，堆顶就是答案；② 快速选择——随机 pivot 划分，看 pivot 落点决定往哪边递归。",
+      "solution": "小顶堆保留最大的 k 个元素（O(n log k)）；或 quickselect 平均 O(n)：划分后若 pivot 索引 == 目标位直接返回。",
+      "time": "O(n log k)",
+      "space": "O(k)",
+      "practiceUrl": "https://leetcode.cn/problems/kth-largest-element-in-an-array/"
+    },
+    {
+      "order": 122,
+      "problemId": 502,
+      "title": "IPO",
+      "englishTitle": "IPO",
+      "category": "堆与优先队列",
+      "difficulty": "挑战",
+      "tags": [
+        "贪心",
+        "数组",
+        "排序"
+      ],
+      "prompt": "面对「IPO」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "每次选「启动资金 ≤ 当前资本」中利润最大的项目：按 capital 排序 + 大顶堆选利润。",
+      "solution": "项目按 capital 排序；维护利润大顶堆；每轮把 capital≤w 的项目入堆，取堆顶执行 w+=profit；重复 k 次或堆空。",
+      "time": "O(n log n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/ipo/"
+    },
+    {
+      "order": 123,
+      "problemId": 373,
+      "title": "查找和最小的 K 对数字",
+      "englishTitle": "Find K Pairs with Smallest Sums",
+      "category": "堆与优先队列",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "堆（优先队列）"
+      ],
+      "prompt": "面对「查找和最小的 K 对数字」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "先把 nums1 每个元素与 nums2[0] 的 pair 入堆；每次弹出最小后入下一对 (i, j+1)。",
+      "solution": "小根堆存 (sum,i,j)；初始入 (nums1[i]+nums2[0], i, 0)；弹 k 次，每次结果后若 j+1<nums2 则入 (i,j+1)。",
+      "time": "O(k log k)",
+      "space": "O(k)",
+      "practiceUrl": "https://leetcode.cn/problems/find-k-pairs-with-smallest-sums/"
+    },
+    {
+      "order": 124,
+      "problemId": 295,
+      "title": "数据流的中位数",
+      "englishTitle": "Find Median from Data Stream",
+      "category": "堆与优先队列",
+      "difficulty": "挑战",
+      "tags": [
+        "设计",
+        "双指针",
+        "数据流"
+      ],
+      "prompt": "面对「数据流的中位数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "大顶堆存较小一半、小顶堆存较大一半，保持两堆大小差≤1；中位数在两堆顶。",
+      "solution": "addNum 先入大顶堆再平衡；findMedian：两堆大小相等取堆顶均值，否则取大顶堆顶。",
+      "time": "O(log n) / 加数",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/find-median-from-data-stream/"
+    },
+    {
+      "order": 125,
+      "problemId": 67,
+      "title": "二进制求和",
+      "englishTitle": "Add Binary",
+      "category": "位运算",
+      "difficulty": "基础",
+      "tags": [
+        "位运算",
+        "数学",
+        "字符串"
+      ],
+      "prompt": "面对「二进制求和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从右往左逐位相加并处理进位。",
+      "solution": "双指针从尾往前；sum=a+b+carry；carry=sum/2，位=sum%2；结束后 carry 补 '1'。",
+      "time": "O(max(m,n))",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/add-binary/"
+    },
+    {
+      "order": 126,
+      "problemId": 190,
+      "title": "颠倒二进制位",
+      "englishTitle": "Reverse Bits",
+      "category": "位运算",
+      "difficulty": "基础",
+      "tags": [
+        "位运算",
+        "分治"
+      ],
+      "prompt": "面对「颠倒二进制位」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "循环 32 次：每次 result 左移一位并取 n 的最低位，再 n 右移。",
+      "solution": "result=0；for i in 32: result=(result<<1)|(n&1); n>>=1；返回 result。",
+      "time": "O(1)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/reverse-bits/"
+    },
+    {
+      "order": 127,
+      "problemId": 191,
+      "title": "位1的个数",
+      "englishTitle": "Number of 1 Bits",
+      "category": "位运算",
+      "difficulty": "基础",
+      "tags": [
+        "位运算",
+        "分治"
+      ],
+      "prompt": "面对「位1的个数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "n & (n-1) 会去掉最低位的 1，反复执行直到 0，次数即 1 的个数。",
+      "solution": "count=0；while n: n&=(n-1); count++；返回 count。",
+      "time": "O(k)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/number-of-1-bits/"
+    },
+    {
+      "order": 128,
+      "problemId": 136,
+      "title": "只出现一次的数字",
+      "englishTitle": "Single Number",
+      "category": "位运算",
+      "difficulty": "基础",
+      "tags": [
+        "位运算",
+        "数组"
+      ],
+      "prompt": "面对「只出现一次的数字」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "异或特性：任何数异或自己为 0，把所有数异或一遍剩下的即为出现一次的数。",
+      "solution": "遍历 ans^=num；返回 ans。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/single-number/"
+    },
+    {
+      "order": 129,
+      "problemId": 137,
+      "title": "只出现一次的数字 II",
+      "englishTitle": "Single Number II",
+      "category": "位运算",
+      "difficulty": "进阶",
+      "tags": [
+        "位运算",
+        "数组"
+      ],
+      "prompt": "面对「只出现一次的数字 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "统计每个位上 1 的个数对 3 取余，余 1 的位即只出现一次数的对应位。",
+      "solution": "逐位统计 %3 置位；或写成 ones/twos 三态状态机。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/single-number-ii/"
+    },
+    {
+      "order": 130,
+      "problemId": 201,
+      "title": "数字范围按位与",
+      "englishTitle": "Bitwise AND of Numbers Range",
+      "category": "位运算",
+      "difficulty": "进阶",
+      "tags": [
+        "位运算"
+      ],
+      "prompt": "面对「数字范围按位与」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "区间按位与会保留公共前缀：不断右移 left/right 直到相等，再把右边补零。",
+      "solution": "shift=0；while left<right: left>>=1; right>>=1; shift++；返回 left<<shift。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/bitwise-and-of-numbers-range/"
+    },
+    {
+      "order": 131,
+      "problemId": 9,
+      "title": "回文数",
+      "englishTitle": "Palindrome Number",
+      "category": "数学",
+      "difficulty": "基础",
+      "tags": [
+        "数学"
+      ],
+      "prompt": "面对「回文数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "负数或非零且末位为 0 的数不是回文；只反转数字后半与前半比较。",
+      "solution": "if x<0 or (x%10==0 and x!=0) return false；rev 反转一半；return x==rev or x==rev/10。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/palindrome-number/"
+    },
+    {
+      "order": 132,
+      "problemId": 66,
+      "title": "加一",
+      "englishTitle": "Plus One",
+      "category": "数学",
+      "difficulty": "基础",
+      "tags": [
+        "数组",
+        "数学"
+      ],
+      "prompt": "面对「加一」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "从最低位开始 +1，遇 9 继续进位；若全部进位则最前插 1。",
+      "solution": "从尾往前；当前位<9 则 +1 并返回；否则置 0；循环结束在开头插入 1。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/plus-one/"
+    },
+    {
+      "order": 133,
+      "problemId": 172,
+      "title": "阶乘后的零",
+      "englishTitle": "Factorial Trailing Zeroes",
+      "category": "数学",
+      "difficulty": "进阶",
+      "tags": [
+        "数学"
+      ],
+      "prompt": "面对「阶乘后的零」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "尾随零来自因子 10=2×5，2 远多于 5，故数 n! 中 5 的个数。",
+      "solution": "count=0；while n: n/=5; count+=n；返回 count。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/factorial-trailing-zeroes/"
+    },
+    {
+      "order": 134,
+      "problemId": 69,
+      "title": "x 的平方根 ",
+      "englishTitle": "Sqrt(x)",
+      "category": "数学",
+      "difficulty": "基础",
+      "tags": [
+        "数学",
+        "二分查找",
+        "牛顿迭代法"
+      ],
+      "prompt": "面对「x 的平方根 」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "在 [0,x] 上二分找最大的 mid 使 mid²≤x。",
+      "solution": "lo=0,hi=x；mid²≤x 则 lo=mid+1，否则 hi=mid-1；返回 hi。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/sqrtx/"
+    },
+    {
+      "order": 135,
+      "problemId": 50,
+      "title": "Pow(x, n)",
+      "englishTitle": "Pow(x, n)",
+      "category": "数学",
+      "difficulty": "进阶",
+      "tags": [
+        "递归",
+        "数学"
+      ],
+      "prompt": "面对「Pow(x, n)」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "x^n=(x^(n/2))²，分治把复杂度降到 O(log n)；注意负指数。",
+      "solution": "快速幂：n<0 则 x=1/x、n=-n；对 n 二进制分解，位为 1 乘入结果，底数平方；处理 int 边界。",
+      "time": "O(log n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/powx-n/"
+    },
+    {
+      "order": 136,
+      "problemId": 149,
+      "title": "直线上最多的点数",
+      "englishTitle": "Max Points on a Line",
+      "category": "数学",
+      "difficulty": "挑战",
+      "tags": [
+        "几何",
+        "数组",
+        "哈希表"
+      ],
+      "prompt": "面对「直线上最多的点数」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "固定一个点，用 map 统计其它点相对它的最简分数斜率出现次数；加重合点。",
+      "solution": "对每个点固定，用 dx/dy 约分后的 (dx/g,dy/g) 作 key 计数；加重合点并更新最大。",
+      "time": "O(n²)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/max-points-on-a-line/"
+    },
+    {
+      "order": 137,
+      "problemId": 70,
+      "title": "爬楼梯",
+      "englishTitle": "Climbing Stairs",
+      "category": "一维动态规划",
+      "difficulty": "基础",
+      "tags": [
+        "记忆化",
+        "数学",
+        "动态规划"
+      ],
+      "prompt": "面对「爬楼梯」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "到达第 n 阶只能从第 n-1 或 n-2 阶迈上来，所以 f(n) = f(n-1) + f(n-2) —— 就是斐波那契数列。",
+      "solution": "滚动变量 DP：用 a、b 两个变量交替前推到第 n 项即可，无需开数组。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/climbing-stairs/"
+    },
+    {
+      "order": 138,
+      "problemId": 198,
+      "title": "打家劫舍",
+      "englishTitle": "House Robber",
+      "category": "一维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「打家劫舍」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i] 为前 i 家最大金额：不偷当前=dp[i-1]，偷=dp[i-2]+nums[i]。",
+      "solution": "两变量滚动：rob2=max(rob2, rob1+nums[i]), rob1=原 rob2。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/house-robber/"
+    },
+    {
+      "order": 139,
+      "problemId": 139,
+      "title": "单词拆分",
+      "englishTitle": "Word Break",
+      "category": "一维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "字典树",
+        "记忆化",
+        "数组"
+      ],
+      "prompt": "面对「单词拆分」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i] 表示 s 前 i 字符能否拆分；枚举 j：dp[j] 且 s[j:i] 在字典则 dp[i]=true。",
+      "solution": "dp[0]=true；枚举 i 与 j<i，若 dp[j] 且词表含 s[j:i] 则 dp[i]=true。",
+      "time": "O(n²·L)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/word-break/"
+    },
+    {
+      "order": 140,
+      "problemId": 322,
+      "title": "零钱兑换",
+      "englishTitle": "Coin Change",
+      "category": "一维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "广度优先搜索",
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「零钱兑换」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "完全背包：dp[a]=凑金额 a 的最少硬币数 = min(dp[a-coin]+1)。",
+      "solution": "dp 初始化 INF，dp[0]=0；外层金额 a，内层每枚 coin，dp[a]=min(dp[a], dp[a-coin]+1)。",
+      "time": "O(n·amount)",
+      "space": "O(amount)",
+      "practiceUrl": "https://leetcode.cn/problems/coin-change/"
+    },
+    {
+      "order": 141,
+      "problemId": 300,
+      "title": "最长递增子序列",
+      "englishTitle": "Longest Increasing Subsequence",
+      "category": "一维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "二分查找",
+        "动态规划"
+      ],
+      "prompt": "面对「最长递增子序列」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i] 以 i 结尾的最长长度 O(n²)；进阶用「tails」贪心+二分达 O(n log n)。",
+      "solution": "tails 数组；对每个数二分找第一个 ≥ 它的位置替换或追加；长度即答案。",
+      "time": "O(n log n)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/longest-increasing-subsequence/"
+    },
+    {
+      "order": 142,
+      "problemId": 120,
+      "title": "三角形最小路径和",
+      "englishTitle": "Triangle",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「三角形最小路径和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "自底向上：dp[j]=triangle[i][j]+min(dp[j], dp[j+1])，一维滚动。",
+      "solution": "从三角形最后一行向上，每行只保留 min(下方两个)，最终 dp[0] 即答案。",
+      "time": "O(n²)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/triangle/"
+    },
+    {
+      "order": 143,
+      "problemId": 64,
+      "title": "最小路径和",
+      "englishTitle": "Minimum Path Sum",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "动态规划",
+        "矩阵"
+      ],
+      "prompt": "面对「最小路径和」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "到 (i,j) 的最小和 = grid[i][j] + min(上方, 左方)；可原地修改。",
+      "solution": "首行/列累加；其余 dp=grid[i][j]+min(dp[i-1][j], dp[i][j-1])。",
+      "time": "O(mn)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/minimum-path-sum/"
+    },
+    {
+      "order": 144,
+      "problemId": 63,
+      "title": "不同路径 II",
+      "englishTitle": "Unique Paths II",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "动态规划",
+        "矩阵"
+      ],
+      "prompt": "面对「不同路径 II」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "遇障碍该格路径数置 0；其余 = 上方路径数 + 左方路径数。",
+      "solution": "dp[0][0] 障碍则 0；每格障碍为 0，否则等于上+左（首行只右传、首列只下传）。",
+      "time": "O(mn)",
+      "space": "O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/unique-paths-ii/"
+    },
+    {
+      "order": 145,
+      "problemId": 5,
+      "title": "最长回文子串",
+      "englishTitle": "Longest Palindromic Substring",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "双指针",
+        "字符串",
+        "动态规划"
+      ],
+      "prompt": "面对「最长回文子串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "回文一定由更小的回文向两边扩展而来。枚举每一个字符（以及每两个字符之间的间隙）作为中心向两侧扩展，共 2n-1 个中心。",
+      "solution": "中心扩展法：枚举 2n-1 个中心，向两边扩直到不等，记录最长区间的起点与长度。也可写区间 DP：dp[i][j] 表示 s[i..j] 是否回文。",
+      "time": "O(n²)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/longest-palindromic-substring/"
+    },
+    {
+      "order": 146,
+      "problemId": 97,
+      "title": "交错字符串",
+      "englishTitle": "Interleaving String",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "字符串",
+        "动态规划"
+      ],
+      "prompt": "面对「交错字符串」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i][j] 表示 s1 前 i 与 s2 前 j 能否交错构成 s3 前 i+j。",
+      "solution": "dp[0][0]=true；转移：s1[i-1]==s3[i+j-1] 且 dp[i-1][j]，或 s2[j-1]==s3[i+j-1] 且 dp[i][j-1]。",
+      "time": "O(mn)",
+      "space": "O(mn)（可优化 O(n)）",
+      "practiceUrl": "https://leetcode.cn/problems/interleaving-string/"
+    },
+    {
+      "order": 147,
+      "problemId": 72,
+      "title": "编辑距离",
+      "englishTitle": "Edit Distance",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "字符串",
+        "动态规划"
+      ],
+      "prompt": "面对「编辑距离」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i][j] = 「word1 前 i 个字符」变成「word2 前 j 个字符」的最少操作数。尾字符相等直接继承，否则三种操作取最小再 +1。",
+      "solution": "二维 DP：相等 → dp[i][j] = dp[i-1][j-1]；否则 min(dp[i][j-1]+1 插入, dp[i-1][j]+1 删除, dp[i-1][j-1]+1 替换)。滚动数组可将空间优化到 O(n)。",
+      "time": "O(mn)",
+      "space": "O(mn) → 可优化至 O(n)",
+      "practiceUrl": "https://leetcode.cn/problems/edit-distance/"
+    },
+    {
+      "order": 148,
+      "problemId": 123,
+      "title": "买卖股票的最佳时机 III",
+      "englishTitle": "Best Time to Buy and Sell Stock III",
+      "category": "多维动态规划",
+      "difficulty": "挑战",
+      "tags": [
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「买卖股票的最佳时机 III」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "最多两笔，用 buy1/sell1/buy2/sell2 四变量表示两笔的买入/卖出后最大利润。",
+      "solution": "buy1=min, sell1=max, buy2=min, sell2=max；遍历股价依次更新，终取 sell2。",
+      "time": "O(n)",
+      "space": "O(1)",
+      "practiceUrl": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-iii/"
+    },
+    {
+      "order": 149,
+      "problemId": 188,
+      "title": "买卖股票的最佳时机 IV",
+      "englishTitle": "Best Time to Buy and Sell Stock IV",
+      "category": "多维动态规划",
+      "difficulty": "挑战",
+      "tags": [
+        "数组",
+        "动态规划"
+      ],
+      "prompt": "面对「买卖股票的最佳时机 IV」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "把 123 推广到 k：用 buy[i]/sell[i] 表示第 i 次买入/卖出后的最大利润。",
+      "solution": "buy 初始 -INF；遍历价格，对每次 j 更新 buy[j]=max(buy[j], sell[j-1]-price)，sell[j]=max(sell[j], buy[j]+price)。",
+      "time": "O(nk)",
+      "space": "O(k)",
+      "practiceUrl": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-iv/"
+    },
+    {
+      "order": 150,
+      "problemId": 221,
+      "title": "最大正方形",
+      "englishTitle": "Maximal Square",
+      "category": "多维动态规划",
+      "difficulty": "进阶",
+      "tags": [
+        "数组",
+        "动态规划",
+        "矩阵"
+      ],
+      "prompt": "面对「最大正方形」这一类问题，应如何建模并求解？请说明关键步骤与复杂度。",
+      "hint": "dp[i][j] 为以 (i,j) 为右下角的最大正方形边长；cell 为 1 时 dp=1+min(上,左,左上)。",
+      "solution": "遍历；遇 '1' 则 dp=1+min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])；记录最大边长平方。",
+      "time": "O(mn)",
+      "space": "O(mn)（可 O(n)）",
+      "practiceUrl": "https://leetcode.cn/problems/maximal-square/"
+    }
+  ]
+}

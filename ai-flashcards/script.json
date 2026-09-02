@@ -1,15 +1,15 @@
 {
-  "name": "AI Flashcards",
+  "name": "AI & Algorithm Flashcards",
   "localizedNames": {
-    "zh": "AI 面试闪卡"
+    "zh": "AI 与算法闪卡"
   },
   "icon": "rectangle.on.rectangle.angled",
   "color": "#5E5CE6",
-  "version": "2.7.8",
+  "version": "3.0.0",
   "runInApp": true,
-  "description": "Spaced-repetition flashcards for LLM / Agent interview prep.",
+  "description": "Spaced-repetition flashcards for AI interviews and classic algorithms.",
   "localizedDescriptions": {
-    "zh": "大模型 / Agent 面试题的间隔重复闪卡。"
+    "zh": "大模型面试与经典算法训练的间隔重复闪卡。"
   },
   "remoteResource": {
     "url": "https://github.com/H4S2O8/ai-interview-flashcards/tree/master/ai-flashcards",
